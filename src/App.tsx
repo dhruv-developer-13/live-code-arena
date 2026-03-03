@@ -1,14 +1,16 @@
-import { useState } from 'react'
-import './App.css'
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Toaster } from "sonner";
+import BattleArena from "./pages/BattleArena";
 
-function App() {
-  const [count, setCount] = useState(0)
-
+export default function App() {
   return (
-    <>
-      <p>Welcome to Live Code Arena</p>
-    </>
-  )
+    <BrowserRouter>
+      <Toaster richColors position="top-right" />
+      <Routes>
+        <Route path="/battle/:roomCode" element={<BattleArena />} />
+        {/* temp shortcut so you don't need to type a roomCode */}
+        <Route path="/battle" element={<BattleArena />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
-
-export default App
