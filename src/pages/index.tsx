@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Trophy, Swords, Target, TrendingUp, Clock, Flame, Plus, LogIn, ChevronRight, CheckCircle2, XCircle, Sun, Moon, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Header } from "@/components/Header";
 
 // ─── HARDCODED DATA (replace with DB query) ──────────────────────────────────
 // TODO: const user = await getUser(session.userId);
@@ -95,15 +96,7 @@ function BattleRow({ battle }: { battle: typeof RECENT_BATTLES[0] }) {
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 export default function Index() {
-  const [isDark, setIsDark] = useState(() =>
-    document.documentElement.classList.contains("dark")
-  );
   const [roomInput, setRoomInput] = useState("");
-
-  const toggleTheme = () => {
-    document.documentElement.classList.toggle("dark");
-    setIsDark((p) => !p);
-  };
 
   const wins = RECENT_BATTLES.filter((b) => b.result === "win").length;
 
@@ -111,27 +104,7 @@ export default function Index() {
     <div className="min-h-screen bg-background text-foreground">
 
       {/* ── Navbar ──────────────────────────────────────────────────────── */}
-      <nav className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
-        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-          <span className="font-black text-lg tracking-tight">
-            code<span className="text-emerald-500">arena</span>
-          </span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-            >
-              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </button>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted">
-              <div className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
-                <User className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <span className="text-sm font-medium">@{USER.username}</span>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <Header />
 
       <main className="max-w-6xl mx-auto px-6 py-10 space-y-10">
 
