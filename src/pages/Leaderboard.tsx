@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   Trophy, Medal, Crown, TrendingUp, TrendingDown,
-  Minus, Swords, Flame, Sun, Moon, User, Users, Zap
+  Minus, Swords, Flame, User, Users, Zap
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Header } from "@/components/Header";
