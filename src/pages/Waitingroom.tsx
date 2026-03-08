@@ -4,7 +4,6 @@ import { Copy, Check, Loader2, Swords, LogOut, Users, Shield, ShieldCheck } from
 import { Header } from "@/components/Header";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { Card, CardContent } from "@/components/ui/card";
 
 interface Player {
   id: string;
