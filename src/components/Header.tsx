@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Sun, Moon, User, Menu, X } from "lucide-react";
+import { Sun, Moon, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Show, UserButton } from "@clerk/react";
+
 
 export function Header() {
   const location = useLocation();
@@ -59,21 +61,9 @@ export function Header() {
           </button>
 
           {/* Profile button */}
-          <Link
-            to="/profile"
-            className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors text-sm font-medium",
-              location.pathname === "/profile"
-                ? "bg-muted border-border text-foreground"
-                : "border-border hover:bg-muted text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <div className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center shrink-0">
-              <User className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            {/* TODO: replace "aryan_dev" with user.username from session */}
-            <span className="hidden sm:inline">aryan_dev</span>
-          </Link>
+          <Show when="signed-in" fallback={<a href="/sign-in">Sign In</a>}>
+            <UserButton />
+          </Show>
 
           {/* Mobile menu toggle */}
           <button

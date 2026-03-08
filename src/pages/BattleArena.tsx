@@ -71,6 +71,8 @@ export default function BattleArena() {
   // Editor
   const [code, setCode] = useState(PYTHON_STUB);
   const editorRef = useRef<HTMLTextAreaElement>(null);
+  const codeRef = useRef(code);
+  useEffect(() => { codeRef.current = code; }, [code]);
 
   // Execution
   const [running, setRunning]       = useState(false);
@@ -229,6 +231,22 @@ export default function BattleArena() {
     toast.error("⚠️ Not allowed", { closeButton: true, description: "Copy/paste is disabled during the contest." });
   }, []);
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Handle Tab key for indentation 
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const textarea = editorRef.current;
+      if (!textarea) return;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const newCode = codeRef.current.slice(0, start) + "    " + codeRef.current.slice(end);
+      setCode(newCode);
+      // Move cursor after the inserted spaces
+      requestAnimationFrame(() => {
+        textarea.selectionStart = start + 4;
+        textarea.selectionEnd = start + 4;
+      });
+      return;
+    }
     if ((e.ctrlKey || e.metaKey) && ["c","v","x"].includes(e.key.toLowerCase())) {
       e.preventDefault();
       toast.error("⚠️ Not allowed", { closeButton: true, description: "Copy/paste is disabled during the contest." });

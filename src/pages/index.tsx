@@ -4,16 +4,7 @@ import { cn } from "@/lib/utils";
 import { Header } from "@/components/Header";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-// ─── HARDCODED DATA ───────────────────────────────────────────────────────────
-// TODO: const user = await getUser(session.userId);
-const USER = {
-  name: "Aryan",
-  username: "aryan_dev",
-  avatar: null,
-  rank: "Gold II",
-  rankPercentile: 12,
-};
+import { useUser, useAuth } from "@clerk/react";
 
 const STATS = {
   battlesWon: 47,
@@ -26,11 +17,11 @@ const STATS = {
 
 // TODO: fetch from /api/battles?userId=...&limit=5
 const RECENT_BATTLES = [
-  { id: "1", opponent: "CodeMaster99", result: "win"  as const, myScore: 350, theirScore: 280, duration: "28m", timestamp: "2 hours ago", difficulty: "Medium" },
-  { id: "2", opponent: "AlgoNinja",    result: "loss" as const, myScore: 200, theirScore: 320, duration: "35m", timestamp: "5 hours ago", difficulty: "Hard"   },
-  { id: "3", opponent: "ByteRunner",   result: "win"  as const, myScore: 400, theirScore: 150, duration: "19m", timestamp: "Yesterday",   difficulty: "Easy"   },
-  { id: "4", opponent: "PixelDev",     result: "win"  as const, myScore: 280, theirScore: 270, duration: "41m", timestamp: "Yesterday",   difficulty: "Medium" },
-  { id: "5", opponent: "SyntaxSam",    result: "loss" as const, myScore: 180, theirScore: 350, duration: "44m", timestamp: "2 days ago",  difficulty: "Hard"   },
+  { id: "1", opponent: "CodeMaster99", result: "win" as const, myScore: 350, theirScore: 280, duration: "28m", timestamp: "2 hours ago", difficulty: "Medium" },
+  { id: "2", opponent: "AlgoNinja", result: "loss" as const, myScore: 200, theirScore: 320, duration: "35m", timestamp: "5 hours ago", difficulty: "Hard" },
+  { id: "3", opponent: "ByteRunner", result: "win" as const, myScore: 400, theirScore: 150, duration: "19m", timestamp: "Yesterday", difficulty: "Easy" },
+  { id: "4", opponent: "PixelDev", result: "win" as const, myScore: 280, theirScore: 270, duration: "41m", timestamp: "Yesterday", difficulty: "Medium" },
+  { id: "5", opponent: "SyntaxSam", result: "loss" as const, myScore: 180, theirScore: 350, duration: "44m", timestamp: "2 days ago", difficulty: "Hard" },
 ];
 
 // ─── SUBCOMPONENTS ────────────────────────────────────────────────────────────
@@ -69,9 +60,9 @@ function BattleRow({ battle }: { battle: typeof RECENT_BATTLES[0] }) {
           <div className="flex items-center gap-2 mt-0.5">
             <span className={cn(
               "text-xs px-1.5 py-0.5 rounded font-medium",
-              battle.difficulty === "Easy"   && "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              battle.difficulty === "Easy" && "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
               battle.difficulty === "Medium" && "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-              battle.difficulty === "Hard"   && "bg-rose-500/10 text-rose-600 dark:text-rose-400",
+              battle.difficulty === "Hard" && "bg-rose-500/10 text-rose-600 dark:text-rose-400",
             )}>
               {battle.difficulty}
             </span>
@@ -101,6 +92,17 @@ function BattleRow({ battle }: { battle: typeof RECENT_BATTLES[0] }) {
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 export default function Index() {
+  const { user } = useUser();
+  const { getToken } = useAuth();
+
+  const USER = {
+    name: user?.fullName || user?.username || "Unknown Player",
+    username: user?.username || "unknown",
+    avatar: user?.imageUrl || null,
+    rank: "Gold II",
+    rankPercentile: 12,
+  };
+
   const navigate = useNavigate();
   const [roomInput, setRoomInput] = useState("");
 
@@ -142,11 +144,11 @@ export default function Index() {
 
         {/* ── Stats Grid — all 5 use StatTile → Card ───────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          <StatTile icon={Trophy}     label="Battles Won"   value={STATS.battlesWon}                accent="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" />
-          <StatTile icon={Swords}     label="Total Battles" value={STATS.totalBattles}               accent="bg-blue-500/10 text-blue-600 dark:text-blue-400" />
-          <StatTile icon={Target}     label="Win Rate"      value={`${STATS.winRate}%`}              accent="bg-violet-500/10 text-violet-600 dark:text-violet-400" />
-          <StatTile icon={TrendingUp} label="Avg Score"     value={STATS.avgScore}   sub="per match" accent="bg-amber-500/10 text-amber-600 dark:text-amber-400" />
-          <StatTile icon={Flame}      label="Best Streak"   value={STATS.bestStreak} sub="days"      accent="bg-orange-500/10 text-orange-600 dark:text-orange-400" />
+          <StatTile icon={Trophy} label="Battles Won" value={STATS.battlesWon} accent="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" />
+          <StatTile icon={Swords} label="Total Battles" value={STATS.totalBattles} accent="bg-blue-500/10 text-blue-600 dark:text-blue-400" />
+          <StatTile icon={Target} label="Win Rate" value={`${STATS.winRate}%`} accent="bg-violet-500/10 text-violet-600 dark:text-violet-400" />
+          <StatTile icon={TrendingUp} label="Avg Score" value={STATS.avgScore} sub="per match" accent="bg-amber-500/10 text-amber-600 dark:text-amber-400" />
+          <StatTile icon={Flame} label="Best Streak" value={STATS.bestStreak} sub="days" accent="bg-orange-500/10 text-orange-600 dark:text-orange-400" />
         </div>
 
         {/* ── Season Performance — Card ─────────────────────────────────── */}
@@ -306,15 +308,15 @@ export default function Index() {
               <CardContent className="p-5 pt-4">
                 {(["Easy", "Medium", "Hard"] as const).map((diff) => {
                   const count = RECENT_BATTLES.filter((b) => b.difficulty === diff).length;
-                  const pct   = Math.round((count / RECENT_BATTLES.length) * 100);
+                  const pct = Math.round((count / RECENT_BATTLES.length) * 100);
                   return (
                     <div key={diff} className="mb-3 last:mb-0">
                       <div className="flex justify-between text-xs mb-1">
                         <span className={cn(
                           "font-semibold",
-                          diff === "Easy"   && "text-emerald-600 dark:text-emerald-400",
+                          diff === "Easy" && "text-emerald-600 dark:text-emerald-400",
                           diff === "Medium" && "text-amber-600 dark:text-amber-400",
-                          diff === "Hard"   && "text-rose-600 dark:text-rose-400",
+                          diff === "Hard" && "text-rose-600 dark:text-rose-400",
                         )}>{diff}</span>
                         <span className="text-muted-foreground">{count} battles</span>
                       </div>
@@ -322,9 +324,9 @@ export default function Index() {
                         <div
                           className={cn(
                             "h-full rounded-full",
-                            diff === "Easy"   && "bg-emerald-500",
+                            diff === "Easy" && "bg-emerald-500",
                             diff === "Medium" && "bg-amber-500",
-                            diff === "Hard"   && "bg-rose-500",
+                            diff === "Hard" && "bg-rose-500",
                           )}
                           style={{ width: `${pct}%` }}
                         />
