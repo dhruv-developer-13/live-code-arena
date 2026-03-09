@@ -4,6 +4,7 @@ import { Copy, Check, Loader2, Swords, LogOut, Users, Shield, ShieldCheck } from
 import { Header } from "@/components/Header";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useUser } from "@clerk/react";
 
 interface Player {
   id: string;
@@ -12,15 +13,6 @@ interface Player {
   isReady: boolean;
   isHost: boolean;
 }
-
-// TODO: replace with session user
-const ME: Player = {
-  id: "1",
-  name: "Aryan",
-  username: "aryan_dev",
-  isReady: false,
-  isHost: true,
-};
 
 // Hardcoded opponent — will be real via WebSocket later
 const OPPONENT: Player = {
@@ -32,22 +24,57 @@ const OPPONENT: Player = {
 };
 
 export default function WaitingRoom() {
+  const { user } = useUser();
   const { roomCode } = useParams<{ roomCode: string }>();
   const navigate = useNavigate();
 
+  const currentPlayerName =
+    user?.fullName || user?.firstName || user?.username || "Player";
+  const currentPlayerUsername =
+    user?.username ||
+    user?.primaryEmailAddress?.emailAddress?.split("@")[0] ||
+    "player";
+
   const [copied, setCopied] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
-  const [players, setPlayers] = useState<Player[]>([ME]);
+  const [players, setPlayers] = useState<Player[]>([
+    {
+      id: "1",
+      name: currentPlayerName,
+      username: currentPlayerUsername,
+      isReady: false,
+      isHost: true,
+    },
+  ]);
   const [opponentReady, setOpponentReady] = useState(false);
+
+  useEffect(() => {
+    setPlayers((prev) =>
+      prev.map((p) =>
+        p.id === "1"
+          ? { ...p, name: currentPlayerName, username: currentPlayerUsername }
+          : p
+      )
+    );
+  }, [currentPlayerName, currentPlayerUsername]);
 
   // Simulate opponent joining after 2.5s
   useEffect(() => {
     const t = setTimeout(() => {
-      setPlayers([ME, { ...OPPONENT, isReady: false }]);
+      setPlayers((prev) => {
+        const me = prev.find((p) => p.id === "1") ?? {
+          id: "1",
+          name: currentPlayerName,
+          username: currentPlayerUsername,
+          isReady: false,
+          isHost: true,
+        };
+        return [me, { ...OPPONENT, isReady: false }];
+      });
       toast("Opponent joined!", { description: `${OPPONENT.name} has entered the arena.` });
     }, 2500);
     return () => clearTimeout(t);
-  }, []);
+  }, [currentPlayerName, currentPlayerUsername]);
 
   // Once user is ready, opponent becomes ready after 1.5s
   const myPlayer = players.find((p) => p.id === "1");

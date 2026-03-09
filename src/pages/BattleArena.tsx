@@ -95,8 +95,8 @@ export default function BattleArena() {
   const [oppScorePulse, setOppScorePulse] = useState(false);
 
   //  Anti-cheat state 
-  const [isFullscreen, setIsFullscreen]               = useState(false);
-  const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(() => !!document.fullscreenElement);
+  const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(() => !document.fullscreenElement);
   const [violations, setViolations]                   = useState(0);
   const [showViolationWarning, setShowViolationWarning] = useState(false);
   const [violationReason, setViolationReason]         = useState("");
@@ -105,7 +105,10 @@ export default function BattleArena() {
   //  Enter fullscreen 
   const enterFullscreen = useCallback(async () => {
     try {
-      await document.documentElement.requestFullscreen();
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+        await document.documentElement.requestFullscreen();
+      }
       setIsFullscreen(true);
       setShowFullscreenPrompt(false);
     } catch (_) {

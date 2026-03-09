@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { Link, matchPath, useLocation } from "react-router-dom";
 import { Sun, Moon, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Show, UserButton } from "@clerk/react";
@@ -16,11 +16,26 @@ export function Header() {
     document.documentElement.classList.toggle("dark");
     setIsDark((p) => !p);
   };
+  
+  const roomCode = useMemo(() => {
+    const waitingMatch = matchPath("/waiting/:roomCode", location.pathname);
+    const battleMatch = matchPath("/battle/:roomCode", location.pathname);
+    return waitingMatch?.params.roomCode ?? battleMatch?.params.roomCode ?? "";
+  }, [location.pathname]);
 
-  const navLinks = [
-    { label: "Home",        href: "/" },
-    { label: "Leaderboard", href: "/leaderboard" },
-  ];
+  const generatedCode = useMemo(
+    () => Math.random().toString(36).substring(2, 8).toUpperCase(),
+    []
+  );
+
+const navLinks = [
+  { label: "Home", href: "/" },
+  {
+    label: "Battle Room",
+    href: `/waiting/${roomCode || generatedCode}`,
+  },
+  { label: "Leaderboard", href: "/leaderboard" },
+];
 
   return (
     <nav className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">

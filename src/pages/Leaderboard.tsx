@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Header } from "@/components/Header";
+import { useUser } from "@clerk/react";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -74,9 +75,7 @@ function Avatar({ username, size = "md" }: { username: string; size?: "sm" | "md
   const sz = size === "lg" ? "w-14 h-14 text-base" : size === "md" ? "w-9 h-9 text-xs" : "w-7 h-7 text-xs";
   return (
     <div className={cn("rounded-full bg-muted border border-border flex items-center justify-center font-black text-foreground shrink-0", sz)}>
-      {username === "aryan_dev" || username === "You"
-        ? <User className="h-4 w-4 text-muted-foreground" />
-        : username.slice(0, 2).toUpperCase()}
+      {username === "You" ? <User className="h-4 w-4 text-muted-foreground" /> : username.slice(0, 2).toUpperCase()}
     </div>
   );
 }
@@ -149,7 +148,15 @@ function MyRankCard({ stats }: { stats: LeaderboardEntry }) {
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 
 export default function Leaderboard() {
+  const { user } = useUser();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
+
+  const myUsername =
+    user?.username ||
+    user?.fullName ||
+    user?.primaryEmailAddress?.emailAddress?.split("@")[0] ||
+    "You";
+  const myStats: LeaderboardEntry = { ...MY_STATS, username: myUsername };
 
   const entries = DATA_BY_FILTER[timeFilter];
   const topThree = entries.slice(0, 3);
@@ -195,7 +202,7 @@ export default function Leaderboard() {
         </div>
 
         {/* ── My Rank ──────────────────────────────────────────────────── */}
-        <MyRankCard stats={MY_STATS} />
+        <MyRankCard stats={myStats} />
 
         {/* ── Filter tabs ──────────────────────────────────────────────── */}
         <div className="flex items-center gap-1 p-1 bg-muted rounded-xl w-fit">
@@ -273,7 +280,7 @@ export default function Leaderboard() {
           </div>
 
           <div className="divide-y divide-border/50">
-            {rest.map((entry, i) => (
+            {rest.map((entry) => (
               <div
                 key={entry.username}
                 className={cn(
