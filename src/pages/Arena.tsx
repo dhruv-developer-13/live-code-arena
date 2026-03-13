@@ -96,7 +96,7 @@ export default function BattleArena() {
 
   //  Anti-cheat state 
   const [isFullscreen, setIsFullscreen] = useState(() => !!document.fullscreenElement);
-  const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(() => !document.fullscreenElement);
+  const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
   const [violations, setViolations]                   = useState(0);
   const [showViolationWarning, setShowViolationWarning] = useState(false);
   const [violationReason, setViolationReason]         = useState("");
@@ -107,7 +107,6 @@ export default function BattleArena() {
     try {
       if (!document.fullscreenElement) {
         await document.documentElement.requestFullscreen();
-        await document.documentElement.requestFullscreen();
       }
       setIsFullscreen(true);
       setShowFullscreenPrompt(false);
@@ -115,6 +114,11 @@ export default function BattleArena() {
       toast.error("Could not enter fullscreen", { closeButton: true, description: "Please allow fullscreen in your browser." });
     }
   }, []);
+
+  // Try to enter fullscreen on mount; browsers may block this without user interaction.
+  useEffect(() => {
+    void enterFullscreen();
+  }, [enterFullscreen]);
 
   //  Record a violation 
   const recordViolation = useCallback((reason: string) => {
@@ -298,9 +302,6 @@ export default function BattleArena() {
   const difficultyOrder = ["Easy", "Medium", "Hard"] as const;
   const iLeading = myScore >= opponentScore;
 
-  //  Violation severity color 
-  const violationColor = violations === 0 ? "emerald" : violations === 1 ? "amber" : "rose";
-
   return (
     <div className="min-h-screen bg-background flex flex-col select-none">
 
@@ -328,12 +329,6 @@ export default function BattleArena() {
               className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors"
             >
               Enter Fullscreen & Start
-            </button>
-            <button
-              onClick={() => setShowFullscreenPrompt(false)}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
-            >
-              Continue without fullscreen (not recommended)
             </button>
           </div>
         </div>
