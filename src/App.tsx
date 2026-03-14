@@ -5,7 +5,10 @@ import BattleArena from "./pages/Arena";
 import HomePage from "./pages/DashBoard";
 import LeaderboardPage from "./pages/Leaderboard";
 import WaitingRoom from "./pages/Waitingroom";
-import { AuthenticateWithRedirectCallback, SignedIn, SignedOut } from "@clerk/clerk-react";
+import {
+  AuthenticateWithRedirectCallback,
+  useAuth 
+} from "@clerk/react";
 import BattleRoom from "./pages/Lobby";
 import BattleHistory from "./pages/History";
 import Results from "./pages/Results";
@@ -13,21 +16,29 @@ import LandingPage from "./pages/LandingPage";
 import SignInPage from "./auth/SignInPage";
 import SignUpPage from "./auth/SignUpPage";
 
+
+
+const ProtectedRoute = ({ children }: { children: ReactNode }) => {
+  const { isSignedIn } = useAuth();
+
+  if (!isSignedIn) {
+    return <Navigate to="/landing" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+const SignedOutOnlyRoute = ({ children }: { children: ReactNode }) => {
+  const { isSignedIn } = useAuth();
+
+  if (isSignedIn) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 export default function App() {
- const ProtectedRoute = ({ children }: { children: ReactNode }) => (
-  <>
-    <SignedIn>{children}</SignedIn>
-    <SignedOut><Navigate to="/landing" replace /></SignedOut>
-  </>
-);
-
- const SignedOutOnlyRoute = ({ children }: { children: ReactNode }) => (
-  <>
-    <SignedOut>{children}</SignedOut>
-    <SignedIn><Navigate to="/" replace /></SignedIn>
-  </>
-);
-
   return (
     <BrowserRouter>
       <Toaster richColors position="top-right" />
@@ -46,5 +57,5 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
-  );
+  )
 }

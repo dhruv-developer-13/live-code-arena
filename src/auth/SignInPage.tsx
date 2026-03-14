@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
-import { useSignIn } from "@clerk/clerk-react";
+import { useSignIn } from "@clerk/react";
 import { Swords, Eye, EyeOff, ArrowRight, Github } from "lucide-react";
 
 export default function SignIn() {

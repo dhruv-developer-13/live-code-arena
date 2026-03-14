@@ -103,11 +103,11 @@ export default function WaitingRoom() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleStart = async () => {
-    setIsStarting(true);
-    await new Promise((r) => setTimeout(r, 900));
-    navigate(`/battle/${roomCode}`);
-  };
+const handleStart = async () => {
+  setIsStarting(true)
+  await new Promise((r) => setTimeout(r, 900))
+  navigate(`/battle/${roomCode}?userId=1&username=${currentPlayerUsername}`)
+}
 
   const allReady = players.length === 2 && players.every((p) => p.isReady);
 
