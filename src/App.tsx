@@ -5,23 +5,37 @@ import BattleArena from "./pages/Arena";
 import HomePage from "./pages/DashBoard";
 import LeaderboardPage from "./pages/Leaderboard";
 import WaitingRoom from "./pages/Waitingroom";
-import { SignIn, SignUp, Show, RedirectToSignIn } from "@clerk/react";
+import { AuthenticateWithRedirectCallback, SignedIn, SignedOut } from "@clerk/clerk-react";
 import BattleRoom from "./pages/Lobby";
 import BattleHistory from "./pages/History";
 import Results from "./pages/Results";
+import LandingPage from "./pages/LandingPage";
+import SignInPage from "./auth/SignInPage";
+import SignUpPage from "./auth/SignUpPage";
 
 export default function App() {
-  const ProtectedRoute = ({ children }: { children: ReactNode }) => (
-    <Show when="signed-in" fallback={<RedirectToSignIn />}>
-      {children}
-    </Show>
-  );
+ const ProtectedRoute = ({ children }: { children: ReactNode }) => (
+  <>
+    <SignedIn>{children}</SignedIn>
+    <SignedOut><Navigate to="/landing" replace /></SignedOut>
+  </>
+);
+
+ const SignedOutOnlyRoute = ({ children }: { children: ReactNode }) => (
+  <>
+    <SignedOut>{children}</SignedOut>
+    <SignedIn><Navigate to="/" replace /></SignedIn>
+  </>
+);
+
   return (
     <BrowserRouter>
       <Toaster richColors position="top-right" />
       <Routes>
-        <Route path="/sign-in/*" element={<SignIn routing="path" path="/sign-in" />} />
-        <Route path="/sign-up/*" element={<SignUp routing="path" path="/sign-up" />} />
+        <Route path="/sign-in/*" element={<SignedOutOnlyRoute><SignInPage /></SignedOutOnlyRoute>} />
+        <Route path="/sign-up/*" element={<SignedOutOnlyRoute><SignUpPage /></SignedOutOnlyRoute>} />
+        <Route path="/sso-callback" element={<AuthenticateWithRedirectCallback />} />
+        <Route path="/landing" element={<SignedOutOnlyRoute><LandingPage /></SignedOutOnlyRoute>} />
         <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
         <Route path="/leaderboard" element={<ProtectedRoute><LeaderboardPage /></ProtectedRoute>} />
         <Route path="/battle/:roomCode" element={<ProtectedRoute><BattleArena /></ProtectedRoute>} />
