@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import BattleArena from "./pages/Arena";
 import HomePage from "./pages/DashBoard";
@@ -16,28 +16,22 @@ import SSOCallback from "./auth/SSOCallBack";
 
 
 const ProtectedRoute = ({ children }: { children: ReactNode }) => {
-  const { isSignedIn } = useAuth();
-
-  if (!isSignedIn) {
-    return <Navigate to="/landing" replace />;
-  }
-
+  const { isSignedIn, isLoaded } = useAuth();
+  
+  if (!isLoaded) return null; // wait for Clerk to initialize
+  if (!isSignedIn) return <Navigate to="/landing" replace />;
   return <>{children}</>;
 };
 
 const SignedOutOnlyRoute = ({ children }: { children: ReactNode }) => {
   const { isSignedIn } = useAuth();
-
-  if (isSignedIn) {
-    return <Navigate to="/" replace />;
-  }
-
+  if (isSignedIn) return <Navigate to="/" replace />;
   return <>{children}</>;
 };
 
 export default function App() {
   return (
-      <>
+    <>
       <Toaster richColors position="top-right" />
       <Routes>
         <Route path="/sign-in/*" element={<SignedOutOnlyRoute><SignInPage /></SignedOutOnlyRoute>} />
@@ -46,6 +40,7 @@ export default function App() {
         <Route path="/landing" element={<SignedOutOnlyRoute><LandingPage /></SignedOutOnlyRoute>} />
         <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
         <Route path="/leaderboard" element={<ProtectedRoute><LeaderboardPage /></ProtectedRoute>} />
+        <Route path="/battle" element={<ProtectedRoute><BattleArena /></ProtectedRoute>} />
         <Route path="/battle/:roomCode" element={<ProtectedRoute><BattleArena /></ProtectedRoute>} />
         <Route path="/waiting/:roomCode" element={<ProtectedRoute><WaitingRoom /></ProtectedRoute>} />
         <Route path="/battle-room" element={<ProtectedRoute><BattleRoom /></ProtectedRoute>} />
@@ -53,6 +48,6 @@ export default function App() {
         <Route path="/results/:roomCode" element={<ProtectedRoute><Results /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      </>
-  )
+    </>
+  );
 }

@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Copy, Check, Loader2, Swords, LogOut, Users, Shield, ShieldAlert, Zap, Clock, ShieldCheck, Share2 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { toast } from "sonner";
@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useUser } from "@clerk/react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { io, Socket } from "socket.io-client";
 
 interface Player {
   id: string;
@@ -15,15 +16,6 @@ interface Player {
   isReady: boolean;
   isHost: boolean;
 }
-
-// Hardcoded opponent — will be real via WebSocket later
-const OPPONENT: Player = {
-  id: "2",
-  name: "CodeNinja99",
-  username: "codeninja99",
-  isReady: false,
-  isHost: false,
-};
 
 const ANTI_CHEAT_RULES = [
   { icon: ShieldAlert, text: "Fullscreen required throughout the battle"   },
@@ -35,74 +27,110 @@ const ANTI_CHEAT_RULES = [
 export default function WaitingRoom() {
   const { user } = useUser();
   const { roomCode } = useParams<{ roomCode: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const currentPlayerName =
-    user?.fullName || user?.firstName || user?.username || "Player";
-  const currentPlayerUsername =
-    user?.username ||
-    user?.primaryEmailAddress?.emailAddress?.split("@")[0] ||
-    "player";
+  // ── Who am I? ──────────────────────────────────────────────────────────────
+  // If player 2 joined via code, their username is in the URL as ?username=xxx
+  // If player 1 created the room, we use Clerk directly.
+  const clerkName     = user?.fullName || user?.firstName || user?.username || "Player";
+  const clerkUsername = user?.username || user?.primaryEmailAddress?.emailAddress?.split("@")[0] || "player";
 
-  const [copied, setCopied] = useState(false);
+  // role: "host" = created the room, "guest" = joined via code
+  const role              = searchParams.get("role") ?? "host";
+  const urlUsername       = searchParams.get("username") ?? clerkUsername;
+  const isHost            = role === "host";
+
+  // Unique socket-level ID: hosts are "1", guests are "2"
+  const mySocketId        = isHost ? "1" : "2";
+  const currentPlayerName = isHost ? clerkName : urlUsername;
+  const currentPlayerUsername = isHost ? clerkUsername : urlUsername;
+
+  const [copied, setCopied]       = useState(false);
   const [isStarting, setIsStarting] = useState(false);
-  const [players, setPlayers] = useState<Player[]>([
+  const [players, setPlayers]     = useState<Player[]>([
     {
-      id: "1",
+      id: mySocketId,
       name: currentPlayerName,
       username: currentPlayerUsername,
       isReady: false,
-      isHost: true,
+      isHost,
     },
   ]);
-  const [opponentReady, setOpponentReady] = useState(false);
 
+  const socketRef = useRef<Socket | null>(null);
+  const myPlayer  = players.find((p) => p.id === mySocketId);
+
+  // Keep player name in sync with Clerk (host only)
   useEffect(() => {
+    if (!isHost) return;
     setPlayers((prev) =>
       prev.map((p) =>
-        p.id === "1"
-          ? { ...p, name: currentPlayerName, username: currentPlayerUsername }
-          : p
+        p.id === "1" ? { ...p, name: clerkName, username: clerkUsername } : p
       )
     );
-  }, [currentPlayerName, currentPlayerUsername]);
+  }, [clerkName, clerkUsername, isHost]);
 
-  // Simulate opponent joining after 2.5s
+  // ── Socket ──────────────────────────────────────────────────────────────────
   useEffect(() => {
-    const t = setTimeout(() => {
-      setPlayers((prev) => {
-        const me = prev.find((p) => p.id === "1") ?? {
-          id: "1",
-          name: currentPlayerName,
-          username: currentPlayerUsername,
-          isReady: false,
-          isHost: true,
-        };
-        return [me, { ...OPPONENT, isReady: false }];
+    const socket = io("http://localhost:3000");
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      socket.emit("waiting_room_join", {
+        roomCode,
+        userId: mySocketId,
+        username: currentPlayerUsername,
       });
-      toast("Opponent joined!", { description: `${OPPONENT.name} has entered the arena.` });
-    }, 2500);
-    return () => clearTimeout(t);
-  }, [currentPlayerName, currentPlayerUsername]);
+    });
 
-  // Once user is ready, opponent becomes ready after 1.5s
-  const myPlayer = players.find((p) => p.id === "1");
-  useEffect(() => {
-    if (!myPlayer?.isReady || players.length < 2 || opponentReady) return;
-    const t = setTimeout(() => {
-      setOpponentReady(true);
+    // Someone else joined — add them as the opponent
+    socket.on("opponent_joined", ({ player }: { player: { userId: string; username: string } }) => {
+      const opponentId = mySocketId === "1" ? "2" : "1";
+      setPlayers((prev) => {
+        if (prev.find((p) => p.id === opponentId)) return prev; // already added
+        return [
+          ...prev,
+          {
+            id: opponentId,
+            name: player.username,
+            username: player.username,
+            isReady: false,
+            isHost: !isHost, // opponent has the opposite role
+          },
+        ];
+      });
+      toast("Opponent joined!", { description: `${player.username} has entered the arena.` });
+    });
+
+    socket.on("opponent_ready", ({ isReady }: { isReady: boolean }) => {
+      const opponentId = mySocketId === "1" ? "2" : "1";
       setPlayers((prev) =>
-        prev.map((p) => (p.id === "2" ? { ...p, isReady: true } : p))
+        prev.map((p) => (p.id === opponentId ? { ...p, isReady } : p))
       );
-      toast("Opponent is ready!", { description: "Both players ready — you can start." });
-    }, 1500);
-    return () => clearTimeout(t);
-  }, [myPlayer?.isReady, players.length]);
+      if (isReady) toast("Opponent is ready!");
+    });
 
+    socket.on("opponent_disconnected", () => {
+      const opponentId = mySocketId === "1" ? "2" : "1";
+      setPlayers((prev) => prev.filter((p) => p.id !== opponentId));
+      toast.error("Opponent disconnected.");
+    });
+
+    return () => { socket.disconnect(); };
+  }, [roomCode, mySocketId, currentPlayerUsername, isHost]);
+
+  // ── Toggle ready ────────────────────────────────────────────────────────────
   const toggleReady = () => {
+    const newReady = !myPlayer?.isReady;
     setPlayers((prev) =>
-      prev.map((p) => (p.id === "1" ? { ...p, isReady: !p.isReady } : p))
+      prev.map((p) => (p.id === mySocketId ? { ...p, isReady: newReady } : p))
     );
+    socketRef.current?.emit("player_ready", {
+      roomCode,
+      userId: mySocketId,
+      isReady: newReady,
+    });
   };
 
   const handleCopy = async () => {
@@ -114,12 +142,7 @@ export default function WaitingRoom() {
 
   const handleShare = async () => {
     const message =
-      `⚔️ Live Code Arena Battle Invite
-👤 Host: ${currentPlayerUsername}
-🎯 Room Code: ${roomCode}
-Think you can beat me? 😏
-Join the battle and prove your coding skills!`;
-
+      `⚔️ Live Code Arena Battle Invite\n👤 Host: ${currentPlayerUsername}\n🎯 Room Code: ${roomCode}\nThink you can beat me? 😏\nJoin the battle and prove your coding skills!`;
     if (navigator.share) {
       await navigator.share({ title: "CodeArena Battle Invite", text: message });
     } else {
@@ -129,12 +152,15 @@ Join the battle and prove your coding skills!`;
   };
 
   const handleStart = async () => {
-    setIsStarting(true)
-    await new Promise((r) => setTimeout(r, 900))
-    navigate(`/battle/${roomCode}?userId=1&username=${currentPlayerUsername}`)
-  }
+    setIsStarting(true);
+    await new Promise((r) => setTimeout(r, 900));
+    navigate(`/battle/${roomCode}?userId=${mySocketId}&username=${currentPlayerUsername}`);
+  };
 
   const allReady = players.length === 2 && players.every((p) => p.isReady);
+
+  // Sort so host always appears first
+  const sortedPlayers = [...players].sort((a, b) => (a.isHost ? -1 : 1));
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -145,7 +171,7 @@ Join the battle and prove your coding skills!`;
       </div>
       <main className="relative z-10 max-w-xl mx-auto px-6 py-12 space-y-6">
 
-      {/*  Page Header  */}
+        {/*  Page Header  */}
         <div className="flex items-center gap-3.5">
           <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
             <Swords className="h-4 w-4 text-emerald-500" />
@@ -169,9 +195,7 @@ Join the battle and prove your coding skills!`;
               onClick={handleCopy}
               className="p-2.5 rounded-xl border border-border bg-muted hover:bg-muted/70 transition-colors text-muted-foreground hover:text-foreground"
             >
-              {copied
-                ? <Check className="h-4 w-4 text-emerald-500" />
-                : <Copy className="h-4 w-4" />}
+              {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
             </button>
             <button
               onClick={handleShare}
@@ -191,27 +215,21 @@ Join the battle and prove your coding skills!`;
           <CardHeader className="flex-row items-center justify-between gap-2 px-5 py-4 border-b border-border">
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-muted-foreground" />
-              <CardTitle className="text-sm font-bold text-foreground">
-                Players
-              </CardTitle>
+              <CardTitle className="text-sm font-bold text-foreground">Players</CardTitle>
             </div>
-            <span className="ml-2 text-muted-foreground font-normal">{players.length}/2</span>
+            <span className="text-sm text-muted-foreground font-normal">{players.length}/2</span>
           </CardHeader>
 
           <CardContent className="p-4 space-y-3">
-            {/* Player rows */}
-            {players.map((player) => (
+            {sortedPlayers.map((player) => (
               <div
                 key={player.id}
                 className={cn(
                   "flex items-center justify-between p-4 rounded-xl border transition-all duration-300",
-                  player.isReady
-                    ? "bg-emerald-500/5 border-emerald-500/25"
-                    : "bg-muted/30 border-border"
+                  player.isReady ? "bg-emerald-500/5 border-emerald-500/25" : "bg-muted/30 border-border"
                 )}
               >
                 <div className="flex items-center gap-3">
-                  {/* Avatar */}
                   <div className={cn(
                     "w-10 h-10 rounded-full border flex items-center justify-center text-sm font-black",
                     player.isHost
@@ -220,7 +238,6 @@ Join the battle and prove your coding skills!`;
                   )}>
                     {player.name.charAt(0).toUpperCase()}
                   </div>
-
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-semibold text-foreground">{player.name}</p>
@@ -234,25 +251,15 @@ Join the battle and prove your coding skills!`;
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  {/* Ready status badge */}
-                  <div className={cn(
-                    "flex items-center gap-1.5 text-xs font-semibold",
-                    player.isReady
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-muted-foreground"
-                  )}>
-                    {player.isReady
-                      ? <ShieldCheck className="h-4 w-4" />
-                      : <Shield className="h-4 w-4" />}
-                    {player.isReady ? "Ready" : "Not Ready"}
-                  </div>
-
+                <div className="flex items-center gap-1.5 text-xs font-semibold">
+                  {player.isReady
+                    ? <><ShieldCheck className="h-4 w-4 text-emerald-500" /><span className="text-emerald-600 dark:text-emerald-400">Ready</span></>
+                    : <><Shield className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">Not Ready</span></>
+                  }
                 </div>
               </div>
             ))}
 
-            {/* Waiting slot */}
             {players.length === 1 && (
               <div className="flex items-center justify-center gap-3 p-6 rounded-xl border-2 border-dashed border-border/60 text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -274,30 +281,27 @@ Join the battle and prove your coding skills!`;
 
         {/*  Actions  */}
         <div className="flex gap-3">
-           {/* Ready toggle */}
-            <button
-              onClick={toggleReady}
-              className={cn(
-                "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border transition-all duration-200",
-                myPlayer?.isReady
-                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/15"
-                  : "bg-muted border-border text-foreground hover:bg-muted/70"
-              )}
-            >
-              {myPlayer?.isReady
-                ? <><ShieldCheck className="h-4 w-4" /> Unready</>
-                : <><Shield className="h-4 w-4" /> Ready Up</>
-              }
-            </button>
- 
+          <button
+            onClick={toggleReady}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border transition-all duration-200",
+              myPlayer?.isReady
+                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/15"
+                : "bg-muted border-border text-foreground hover:bg-muted/70"
+            )}
+          >
+            {myPlayer?.isReady
+              ? <><ShieldCheck className="h-4 w-4" /> Unready</>
+              : <><Shield className="h-4 w-4" /> Ready Up</>
+            }
+          </button>
+
           <button
             onClick={handleStart}
             disabled={!allReady || isStarting}
             className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm transition-all duration-200"
           >
-            {isStarting
-              ? <Loader2 className="h-4 w-4 animate-spin" />
-              : <Swords className="h-4 w-4" />}
+            {isStarting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Swords className="h-4 w-4" />}
             {isStarting ? "Starting…" : "Start Battle"}
           </button>
 

@@ -15,8 +15,6 @@ import problemsData from "../data/problems.json";
 import { runBatch, judgeResults, type JudgedResult } from "../lib/executor";
 import { io, Socket } from "socket.io-client";
 
-// ─── TYPES ────────────────────────────────────────────────────────────────────
-
 interface Example { input: string; output: string; explanation?: string; }
 interface TestCase { input: string; expected: string; }
 interface Problem {
@@ -28,16 +26,28 @@ interface Problem {
 interface TestResult { passed: boolean; input: string; expected: string; actual: string; }
 interface Submission { time: string; problem: string; status: "AC" | "WA" | "TLE"; }
 
-// ─── API ──────────────────────────────────────────────────────────────────────
-
 async function apiFetchProblems(): Promise<Problem[]> {
   await new Promise((r) => setTimeout(r, 500));
   return problemsData.problems as Problem[];
 }
 
-// ─── CONSTANTS ────────────────────────────────────────────────────────────────
+// Points per difficulty — source of truth
+const DIFFICULTY_POINTS: Record<"Easy" | "Medium" | "Hard", number> = {
+  Easy:   100,
+  Medium: 200,
+  Hard:   300,
+};
 
-const BASE_URL = (import.meta as any).env?.VITE_API_URL ?? "http://localhost:3000";
+// Pick exactly one random problem per difficulty and set correct points
+function pickBattleProblems(all: Problem[]): Problem[] {
+  const pick = (diff: "Easy" | "Medium" | "Hard") => {
+    const pool = all.filter((p) => p.difficulty === diff);
+    const problem = pool[Math.floor(Math.random() * pool.length)] ?? pool[0]!;
+    return { ...problem, points: DIFFICULTY_POINTS[diff] };
+  };
+  return [pick("Easy"), pick("Medium"), pick("Hard")];
+}
+
 const TOTAL_SECONDS = 45 * 60;
 const PYTHON_STUB = `# Read input and write your solution here
 # Example for Two Sum:
@@ -47,64 +57,54 @@ const PYTHON_STUB = `# Read input and write your solution here
 `;
 const MAX_VIOLATIONS = 3;
 
-// ─── COMPONENT ───────────────────────────────────────────────────────────────
-
 export default function BattleArena() {
   const { roomCode = "DEMO" } = useParams<{ roomCode: string }>();
   const navigate = useNavigate();
 
-  // URL params
   const [searchParams] = useSearchParams();
   const username = searchParams.get("username") ?? "player1";
 
-  // Theme
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains("dark"));
   const toggleTheme = () => { document.documentElement.classList.toggle("dark"); setIsDark((p) => !p); };
 
-  // Problems
   const [problems, setProblems]     = useState<Problem[]>([]);
   const [loading, setLoading]       = useState(true);
   const [loadError, setLoadError]   = useState<string | null>(null);
   const [selectedProblem, setSelectedProblem] = useState(0);
 
-  // Editor
-  const [code, setCode] = useState(PYTHON_STUB);
+  // Per-problem code storage
+  const [codes, setCodes] = useState<Record<number, string>>({ 0: PYTHON_STUB, 1: PYTHON_STUB, 2: PYTHON_STUB });
+  const code    = codes[selectedProblem] ?? PYTHON_STUB;
+  const setCode = (val: string) => setCodes((prev) => ({ ...prev, [selectedProblem]: val }));
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const codeRef   = useRef(code);
   useEffect(() => { codeRef.current = code; }, [code]);
 
-  // Execution
   const [running, setRunning]         = useState(false);
   const [submitting, setSubmitting]   = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [testResults, setTestResults] = useState<TestResult[]>([]);
 
-  // Competition
-  const [timeLeft, setTimeLeft]       = useState(TOTAL_SECONDS);
-  const [myScore, setMyScore]         = useState(0);
+  const [timeLeft, setTimeLeft]           = useState(TOTAL_SECONDS);
+  const [myScore, setMyScore]             = useState(0);
   const [opponentScore, setOpponentScore] = useState(0);
-  const [myProgress, setMyProgress]   = useState<Record<string, number | null>>({ Easy: null, Medium: null, Hard: null });
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [myProgress, setMyProgress]       = useState<Record<string, number | null>>({ Easy: null, Medium: null, Hard: null });
+  const [submissions, setSubmissions]     = useState<Submission[]>([]);
 
-  // Socket
   const socketRef = useRef<Socket | null>(null);
 
-  // Dialogs
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
 
-  // Score pulse
   const [myScorePulse, setMyScorePulse]   = useState(false);
   const [oppScorePulse, setOppScorePulse] = useState(false);
 
-  // Anti-cheat
-  const [isFullscreen, setIsFullscreen]           = useState(() => !!document.fullscreenElement);
+  const [isFullscreen, setIsFullscreen]                 = useState(() => !!document.fullscreenElement);
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
-  const [violations, setViolations]               = useState(0);
+  const [violations, setViolations]                     = useState(0);
   const [showViolationWarning, setShowViolationWarning] = useState(false);
-  const [violationReason, setViolationReason]     = useState("");
+  const [violationReason, setViolationReason]           = useState("");
   const violationsRef = useRef(0);
 
-  // ── Enter fullscreen ────────────────────────────────────────────────────────
   const enterFullscreen = useCallback(async () => {
     try {
       if (!document.fullscreenElement) {
@@ -117,38 +117,46 @@ export default function BattleArena() {
     }
   }, []);
 
-  useEffect(() => { void enterFullscreen(); }, [enterFullscreen]);
+  // ── TESTING MODE: fullscreen prompt disabled ─────────────────────────────
+  // useEffect(() => { void enterFullscreen(); }, [enterFullscreen]);
 
-  // ── Load problems ───────────────────────────────────────────────────────────
   useEffect(() => {
     apiFetchProblems()
-      .then((data) => { setProblems(data); setLoading(false); })
+      .then((data) => { setProblems(pickBattleProblems(data)); setLoading(false); })
       .catch((err) => { setLoadError(err.message); setLoading(false); });
   }, []);
 
-  // ── Socket ──────────────────────────────────────────────────────────────────
+  const isDemoMode = roomCode === "DEMO";
+
   useEffect(() => {
+    if (isDemoMode) return;
     const socket = io("http://localhost:3000");
     socketRef.current = socket;
 
     socket.on("connect", () => {
-      socket.emit("join_room", { roomCode, userId: username });
+      socket.emit("join_room", { roomCode, userId: username, username });
     });
-
     socket.on("opponent_score", ({ score }: { score: number }) => {
       setOpponentScore(score);
       setOppScorePulse(true);
       setTimeout(() => setOppScorePulse(false), 600);
     });
+    socket.on("sync_opponent_score", ({ score }: { score: number }) => {
+      setOpponentScore(score);
+    });
+    socket.on("opponent_disconnected", () => {
+      toast.error("Opponent disconnected!");
+    });
 
     return () => { socket.disconnect(); };
-  }, [roomCode, username]);
+  }, [roomCode, username, isDemoMode]);
 
-  // ── Timer ───────────────────────────────────────────────────────────────────
+  const buildResultsStateRef = useRef<() => object>(() => ({}));
+
   useEffect(() => {
     const t = setInterval(() => {
       setTimeLeft((prev) => {
-        if (prev <= 1) { clearInterval(t); navigate(`/results/${roomCode}`); return 0; }
+        if (prev <= 1) { clearInterval(t); navigate(`/results/${roomCode}`, { state: buildResultsStateRef.current() }); return 0; }
         return prev - 1;
       });
     }, 1000);
@@ -159,7 +167,6 @@ export default function BattleArena() {
     `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
   const elapsed = () => formatTime(TOTAL_SECONDS - timeLeft);
 
-  // ── Deduct points ───────────────────────────────────────────────────────────
   const deductPoints = useCallback((reason: string) => {
     setMyScore((prev) => {
       const next = Math.max(0, prev - 50);
@@ -171,7 +178,6 @@ export default function BattleArena() {
     });
   }, [roomCode, username]);
 
-  // ── Record violation ────────────────────────────────────────────────────────
   const recordViolation = useCallback((reason: string) => {
     violationsRef.current += 1;
     setViolations(violationsRef.current);
@@ -180,65 +186,68 @@ export default function BattleArena() {
     deductPoints(reason);
     toast.error(`⚠️ Violation ${violationsRef.current}/${MAX_VIOLATIONS}`, { description: reason });
     if (violationsRef.current >= MAX_VIOLATIONS) {
-      setTimeout(() => navigate(`/results/${roomCode}`), 2500);
+      setTimeout(() => navigate(`/results/${roomCode}`, { state: buildResultsStateRef.current() }), 2500);
     }
   }, [navigate, roomCode, deductPoints]);
 
-  // ── Fullscreen change ───────────────────────────────────────────────────────
-  useEffect(() => {
-    const onFsChange = () => {
-      const inFs = !!document.fullscreenElement;
-      setIsFullscreen(inFs);
-      if (!inFs && !showFullscreenPrompt) {
-        setShowFullscreenPrompt(true);
-        recordViolation("You exited fullscreen.");
-      }
-    };
-    document.addEventListener("fullscreenchange", onFsChange);
-    return () => document.removeEventListener("fullscreenchange", onFsChange);
-  }, [recordViolation, showFullscreenPrompt]);
+  // ── TESTING MODE: fullscreen enforcement disabled ────────────────────────
+  // useEffect(() => {
+  //   const onFsChange = () => {
+  //     const inFs = !!document.fullscreenElement;
+  //     setIsFullscreen(inFs);
+  //     if (!inFs && !showFullscreenPrompt) {
+  //       setShowFullscreenPrompt(true);
+  //       recordViolation("You exited fullscreen.");
+  //     }
+  //   };
+  //   document.addEventListener("fullscreenchange", onFsChange);
+  //   return () => document.removeEventListener("fullscreenchange", onFsChange);
+  // }, [recordViolation, showFullscreenPrompt]);
 
-  // ── Tab / window visibility ─────────────────────────────────────────────────
-  useEffect(() => {
-    const onVisibilityChange = () => {
-      if (document.hidden) recordViolation("You switched tabs or minimized the window.");
-    };
-    const onBlur = () => {
-      if (!document.hidden) recordViolation("You switched to another window.");
-    };
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    window.addEventListener("blur", onBlur);
-    return () => {
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-      window.removeEventListener("blur", onBlur);
-    };
-  }, [recordViolation]);
+  // ── TESTING MODE: tab/window switch detection disabled ───────────────────
+  // useEffect(() => {
+  //   const onVisibilityChange = () => {
+  //     if (document.hidden) recordViolation("You switched tabs or minimized the window.");
+  //   };
+  //   const onBlur = () => {
+  //     if (!document.hidden) recordViolation("You switched to another window.");
+  //   };
+  //   document.addEventListener("visibilitychange", onVisibilityChange);
+  //   window.addEventListener("blur", onBlur);
+  //   return () => {
+  //     document.removeEventListener("visibilitychange", onVisibilityChange);
+  //     window.removeEventListener("blur", onBlur);
+  //   };
+  // }, [recordViolation]);
 
-  // ── Block right-click globally ──────────────────────────────────────────────
-  useEffect(() => {
-    const block = (e: MouseEvent) => e.preventDefault();
-    document.addEventListener("contextmenu", block);
-    return () => document.removeEventListener("contextmenu", block);
+  // ── TESTING MODE: right-click block disabled ─────────────────────────────
+  // useEffect(() => {
+  //   const block = (e: MouseEvent) => e.preventDefault();
+  //   document.addEventListener("contextmenu", block);
+  //   return () => document.removeEventListener("contextmenu", block);
+  // }, []);
+
+  // ── TESTING MODE: screenshot/devtools block disabled ─────────────────────
+  // useEffect(() => {
+  //   const block = (e: KeyboardEvent) => {
+  //     const key = e.key.toLowerCase();
+  //     if (key === "printscreen") { e.preventDefault(); recordViolation("Screenshot attempt detected."); return; }
+  //     if (key === "f12") { e.preventDefault(); return; }
+  //     if ((e.ctrlKey || e.metaKey) && e.shiftKey && ["i", "j", "c"].includes(key)) { e.preventDefault(); return; }
+  //     if ((e.ctrlKey || e.metaKey) && ["u", "s"].includes(key)) { e.preventDefault(); return; }
+  //   };
+  //   document.addEventListener("keydown", block);
+  //   return () => document.removeEventListener("keydown", block);
+  // }, [recordViolation]);
+
+  // ── TESTING MODE: copy/paste block disabled ──────────────────────────────
+  // const blockClipboard = useCallback((e: React.ClipboardEvent) => {
+  //   e.preventDefault();
+  //   recordViolation("Copy/paste attempt detected.");
+  // }, [recordViolation]);
+  const blockClipboard = useCallback((_e: React.ClipboardEvent) => {
+    // disabled for testing
   }, []);
-
-  // ── Block screenshot / devtools shortcuts ───────────────────────────────────
-  useEffect(() => {
-    const block = (e: KeyboardEvent) => {
-      const key = e.key.toLowerCase();
-      if (key === "printscreen") { e.preventDefault(); recordViolation("Screenshot attempt detected."); return; }
-      if (key === "f12") { e.preventDefault(); return; }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && ["i", "j", "c"].includes(key)) { e.preventDefault(); return; }
-      if ((e.ctrlKey || e.metaKey) && ["u", "s"].includes(key)) { e.preventDefault(); return; }
-    };
-    document.addEventListener("keydown", block);
-    return () => document.removeEventListener("keydown", block);
-  }, [recordViolation]);
-
-  // ── Editor anti-cheat ───────────────────────────────────────────────────────
-  const blockClipboard = useCallback((e: React.ClipboardEvent) => {
-    e.preventDefault();
-    recordViolation("Copy/paste attempt detected.");
-  }, [recordViolation]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Tab") {
@@ -255,30 +264,29 @@ export default function BattleArena() {
       });
       return;
     }
-    if ((e.ctrlKey || e.metaKey) && ["c", "v", "x"].includes(e.key.toLowerCase())) {
-      e.preventDefault();
-      recordViolation("Copy/paste attempt detected.");
-    }
-  }, [recordViolation]);
+    // ── TESTING MODE: ctrl+c/v/x block disabled ────────────────────────────
+    // if ((e.ctrlKey || e.metaKey) && ["c", "v", "x"].includes(e.key.toLowerCase())) {
+    //   e.preventDefault();
+    //   recordViolation("Copy/paste attempt detected.");
+    // }
+  }, []);
 
-  // ── Submit ──────────────────────────────────────────────────────────────────
   const handleSubmit = useCallback(async () => {
     if (!problems[selectedProblem]) return;
     setSubmitting(true);
     const problem = problems[selectedProblem]!;
 
     try {
-      const testCases = problem.testCases;
-      const raw       = await runBatch({ code, testCases });
-      const judged    = judgeResults(raw, testCases);
-
-      const passed = judged.filter((j: JudgedResult) => j.passed).length
+      const testCases   = problem.testCases;
+      const raw         = await runBatch({ code, testCases });
+      const judged      = judgeResults(raw, testCases);
+      const passed      = judged.filter((j: JudgedResult) => j.passed).length;
       const total       = judged.length;
       const scoreEarned = Math.round((passed / total) * problem.points);
 
       const status: "AC" | "WA" | "TLE" = judged.some((j: JudgedResult) => j.status === "TLE")
-  ? "TLE"
-  : passed === total ? "AC" : "WA"
+        ? "TLE"
+        : passed === total ? "AC" : "WA";
 
       setSubmissions((prev) => [{ time: elapsed(), problem: problem.title, status }, ...prev]);
 
@@ -309,7 +317,41 @@ export default function BattleArena() {
     }
   }, [problems, selectedProblem, code, roomCode, username, elapsed]);
 
-  // ── Run ─────────────────────────────────────────────────────────────────────
+  // Pre-compute accepted set (used in handleSubmitAndLeave below)
+  const acceptedIds = new Set(submissions.filter((s) => s.status === "AC").map((s) => s.problem));
+
+  // Only the 3 problems shown in the battle (Easy=0, Medium=1, Hard=2)
+  // problems is always exactly [Easy, Medium, Hard] after pickBattleProblems
+  const BATTLE_INDICES = problems.map((_, i) => i) as number[];
+
+  const buildResultsState = useCallback(() => ({
+    results: BATTLE_INDICES.map((i) => {
+      const problem = problems[i];
+      if (!problem) return null;
+      return {
+        title:        problem.title,
+        difficulty:   problem.difficulty,
+        yourScore:    myProgress[problem.difficulty] ?? 0,
+        opponentScore: 0,
+        maxScore:     problem.points,
+        testsPassed:  { you: 0, opponent: 0, total: problem.testCases.length },
+        bestTime:     { you: null, opponent: null },
+        yourCode:     codes[i] ?? "",
+      };
+    }).filter(Boolean),
+  }), [problems, myProgress, codes]);
+
+  // Keep ref in sync so the timer always has the latest version
+  useEffect(() => { buildResultsStateRef.current = buildResultsState; }, [buildResultsState]);
+
+  // Submit current problem then navigate to results
+  const handleSubmitAndLeave = useCallback(async () => {
+    if (problems[selectedProblem] && !acceptedIds?.has(problems[selectedProblem]!.title)) {
+      await handleSubmit();
+    }
+    navigate(`/results/${roomCode}`, { state: buildResultsState() });
+  }, [problems, selectedProblem, handleSubmit, navigate, roomCode, buildResultsState, acceptedIds]);
+
   const handleRun = async () => {
     if (!problems[selectedProblem]) return;
     setRunning(true); setShowResults(true);
@@ -334,19 +376,15 @@ export default function BattleArena() {
     }
   };
 
-  // ── Derived state ───────────────────────────────────────────────────────────
-  const isUrgent        = timeLeft < 5 * 60;
-  const currentProblem  = problems[selectedProblem];
-  const acceptedIds     = new Set(submissions.filter((s) => s.status === "AC").map((s) => s.problem));
+  const isUrgent          = timeLeft < 5 * 60;
+  const currentProblem    = problems[selectedProblem];
   const isCurrentAccepted = currentProblem ? acceptedIds.has(currentProblem.title) : false;
-  const difficultyOrder = ["Easy", "Medium", "Hard"] as const;
-  const iLeading        = myScore >= opponentScore;
+  const difficultyOrder   = ["Easy", "Medium", "Hard"] as const;
+  const iLeading          = myScore >= opponentScore;
 
-  // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-background flex flex-col select-none">
 
-      {/* Fullscreen Prompt Overlay */}
       {showFullscreenPrompt && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-background/95 backdrop-blur-md">
           <div className="flex flex-col items-center gap-6 text-center max-w-sm mx-4">
@@ -365,45 +403,29 @@ export default function BattleArena() {
               <p className="flex items-center gap-2"><ShieldAlert className="h-3.5 w-3.5 text-amber-500 shrink-0" /> Tab switching is monitored</p>
               <p className="flex items-center gap-2"><ShieldAlert className="h-3.5 w-3.5 text-rose-500 shrink-0" /> {MAX_VIOLATIONS} violations = disqualification</p>
             </div>
-            <button
-              onClick={enterFullscreen}
-              className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors"
-            >
+            <button onClick={enterFullscreen} className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors">
               Enter Fullscreen & Start
             </button>
           </div>
         </div>
       )}
 
-      {/* Violation Warning Modal */}
       {showViolationWarning && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowViolationWarning(false)} />
           <div className="relative z-10 bg-card border border-border rounded-2xl shadow-2xl p-8 w-full max-w-sm mx-4 flex flex-col items-center gap-5">
-            <div className={cn(
-              "w-14 h-14 rounded-full flex items-center justify-center",
-              violations >= MAX_VIOLATIONS ? "bg-rose-500/20" : "bg-amber-500/15"
-            )}>
+            <div className={cn("w-14 h-14 rounded-full flex items-center justify-center", violations >= MAX_VIOLATIONS ? "bg-rose-500/20" : "bg-amber-500/15")}>
               <ShieldX className={cn("h-7 w-7", violations >= MAX_VIOLATIONS ? "text-rose-500" : "text-amber-500")} />
             </div>
             <div className="text-center">
-              <h2 className="text-xl font-bold mb-1">
-                {violations >= MAX_VIOLATIONS ? "Disqualified" : `Violation ${violations}/${MAX_VIOLATIONS}`}
-              </h2>
+              <h2 className="text-xl font-bold mb-1">{violations >= MAX_VIOLATIONS ? "Disqualified" : `Violation ${violations}/${MAX_VIOLATIONS}`}</h2>
               <p className="text-sm text-muted-foreground mb-3">{violationReason}</p>
-              {violations >= MAX_VIOLATIONS ? (
-                <p className="text-xs text-rose-500 font-semibold">You have been disqualified. Redirecting…</p>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  {MAX_VIOLATIONS - violations} more violation{MAX_VIOLATIONS - violations !== 1 ? "s" : ""} will result in disqualification.
-                </p>
-              )}
+              {violations >= MAX_VIOLATIONS
+                ? <p className="text-xs text-rose-500 font-semibold">You have been disqualified. Redirecting…</p>
+                : <p className="text-xs text-muted-foreground">{MAX_VIOLATIONS - violations} more violation{MAX_VIOLATIONS - violations !== 1 ? "s" : ""} will result in disqualification.</p>}
             </div>
             {violations < MAX_VIOLATIONS && (
-              <button
-                onClick={() => { setShowViolationWarning(false); enterFullscreen(); }}
-                className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors"
-              >
+              <button onClick={() => { setShowViolationWarning(false); enterFullscreen(); }} className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors">
                 Return to Fullscreen
               </button>
             )}
@@ -411,7 +433,6 @@ export default function BattleArena() {
         </div>
       )}
 
-      {/* Leave Dialog */}
       {showLeaveDialog && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowLeaveDialog(false)} />
@@ -421,11 +442,19 @@ export default function BattleArena() {
             </div>
             <div className="text-center">
               <h2 className="text-xl font-bold mb-1">Leave the Arena?</h2>
-              <p className="text-sm text-muted-foreground">Your progress will be lost and you'll forfeit the match.</p>
+              <p className="text-sm text-muted-foreground">Submit your current code and see results, or forfeit and go home.</p>
             </div>
-            <div className="flex gap-3 w-full">
-              <button onClick={() => setShowLeaveDialog(false)} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-secondary hover:bg-secondary/70 text-sm font-medium transition-colors">Stay</button>
-              <button onClick={() => navigate("/")} className="flex-1 px-4 py-2.5 rounded-lg bg-destructive hover:bg-destructive/80 text-destructive-foreground text-sm font-bold transition-colors">Leave</button>
+            <div className="flex flex-col gap-2 w-full">
+              <button
+                onClick={() => { setShowLeaveDialog(false); handleSubmitAndLeave(); }}
+                className="w-full px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition-colors flex items-center justify-center gap-2"
+              >
+                <Send className="h-4 w-4" /> Submit & Leave
+              </button>
+              <div className="flex gap-2">
+                <button onClick={() => setShowLeaveDialog(false)} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-secondary hover:bg-secondary/70 text-sm font-medium transition-colors">Stay</button>
+                <button onClick={() => navigate("/")} className="flex-1 px-4 py-2.5 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20 text-sm font-semibold transition-colors">Forfeit</button>
+              </div>
             </div>
           </div>
         </div>
@@ -434,8 +463,6 @@ export default function BattleArena() {
       {/* Top Bar */}
       <div className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur-xl">
         <div className="relative flex items-center h-14 px-6">
-
-          {/* Left: Timer */}
           <div className={cn(
             "flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-base font-bold transition-all duration-300",
             isUrgent ? "bg-destructive/15 text-destructive ring-1 ring-destructive/40 animate-pulse" : "bg-muted text-foreground"
@@ -444,7 +471,6 @@ export default function BattleArena() {
             {formatTime(timeLeft)}
           </div>
 
-          {/* Center: Score */}
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-4">
             <div className={cn("flex flex-col items-center px-4 py-1 rounded-xl transition-all duration-300", iLeading ? "bg-emerald-500/15 ring-1 ring-emerald-500/40" : "bg-muted")}>
               <span className="text-xs text-muted-foreground font-medium leading-none mb-0.5">You</span>
@@ -457,7 +483,6 @@ export default function BattleArena() {
             </div>
           </div>
 
-          {/* Right: Violations + Theme + Leave */}
           <div className="ml-auto flex items-center gap-2">
             <div className={cn(
               "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors",
@@ -476,40 +501,27 @@ export default function BattleArena() {
             <button onClick={toggleTheme} className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground" aria-label="Toggle theme">
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
-            <button onClick={() => setShowLeaveDialog(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive text-sm font-semibold transition-colors border border-destructive/20">
+            <button onClick={() => setShowLeaveDialog(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-600 dark:text-emerald-400 text-sm font-semibold transition-colors border border-emerald-500/20">
               <LogOut className="h-4 w-4" />
-              Leave
+              Submit & Leave
             </button>
           </div>
         </div>
       </div>
 
-      {/* Main */}
       <ResizablePanelGroup orientation="horizontal" className="flex-1 flex overflow-hidden">
-
-        {/* Left: Problem */}
         <ResizablePanel defaultSize="30" maxSize="30" minSize="0" collapsible collapsedSize="0">
-          <div
-            className="h-full border-r border-border bg-card flex flex-col overflow-hidden"
-            onCopy={(e) => e.preventDefault()}
-            onCut={(e) => e.preventDefault()}
-            onContextMenu={(e) => e.preventDefault()}
-          >
-            {/* Difficulty Tabs */}
+          <div className="h-full border-r border-border bg-card flex flex-col overflow-hidden">
             <div className="flex border-b border-border shrink-0">
               {difficultyOrder.map((diff, i) => (
-                <button
-                  key={diff}
-                  onClick={() => setSelectedProblem(i)}
-                  className={cn("flex-1 py-3 text-sm font-semibold transition-colors relative", selectedProblem === i ? "text-foreground" : "text-muted-foreground hover:text-foreground")}
-                >
+                <button key={diff} onClick={() => setSelectedProblem(i)}
+                  className={cn("flex-1 py-3 text-sm font-semibold transition-colors relative", selectedProblem === i ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
                   <span className={cn(diff === "Easy" && "text-emerald-500", diff === "Medium" && "text-amber-500", diff === "Hard" && "text-rose-500")}>{diff}</span>
                   {selectedProblem === i && <div className={cn("absolute bottom-0 left-0 right-0 h-0.5", diff === "Easy" && "bg-emerald-500", diff === "Medium" && "bg-amber-500", diff === "Hard" && "bg-rose-500")} />}
                 </button>
               ))}
             </div>
 
-            {/* Problem Content */}
             <div className="flex-1 overflow-y-auto p-6 space-y-5" style={{ userSelect: "none", WebkitUserSelect: "none" }}>
               {loading && (
                 <div className="flex flex-col gap-3 animate-pulse pt-4">
@@ -535,13 +547,9 @@ export default function BattleArena() {
                       currentProblem.difficulty === "Easy"   && "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
                       currentProblem.difficulty === "Medium" && "bg-amber-500/15 text-amber-600 dark:text-amber-400",
                       currentProblem.difficulty === "Hard"   && "bg-rose-500/15 text-rose-600 dark:text-rose-400",
-                    )}>
-                      {currentProblem.points} pts
-                    </span>
+                    )}>{currentProblem.points} pts</span>
                   </div>
                   <p className="text-sm text-muted-foreground leading-relaxed">{currentProblem.description}</p>
-
-                  {/* Examples */}
                   <div className="space-y-3">
                     {currentProblem.examples?.map((ex, i) => (
                       <div key={i} className="rounded-xl border border-border overflow-hidden">
@@ -556,8 +564,6 @@ export default function BattleArena() {
                       </div>
                     ))}
                   </div>
-
-                  {/* Constraints */}
                   <div>
                     <h4 className="text-sm font-bold mb-2">Constraints</h4>
                     <div className="rounded-xl border border-border bg-muted/30 p-3">
@@ -566,8 +572,6 @@ export default function BattleArena() {
                       ))}
                     </div>
                   </div>
-
-                  {/* Input / Output Format */}
                   <div className="grid grid-cols-2 gap-3">
                     <div className="rounded-xl border border-border overflow-hidden">
                       <div className="px-3 py-1.5 bg-muted/50 border-b border-border"><span className="text-xs font-bold text-muted-foreground">Input Format</span></div>
@@ -585,10 +589,8 @@ export default function BattleArena() {
         </ResizablePanel>
         <ResizableHandle withHandle />
 
-        {/* Center: Editor */}
         <ResizablePanel defaultSize="50" minSize="50">
           <div className="h-full flex flex-col min-w-0">
-            {/* Editor toolbar */}
             <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-muted/30 shrink-0">
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20">
                 <div className="w-2 h-2 rounded-full bg-blue-500" />
@@ -606,7 +608,6 @@ export default function BattleArena() {
               </div>
             </div>
 
-            {/* Editor + Test Results — vertical resizable split */}
             <ResizablePanelGroup orientation="vertical" className="flex-1 min-h-0">
               <ResizablePanel defaultSize="100" minSize="50">
                 <div className="relative h-full">
@@ -618,7 +619,6 @@ export default function BattleArena() {
                     onCut={blockClipboard}
                     onPaste={blockClipboard}
                     onKeyDown={handleKeyDown}
-                    onContextMenu={(e) => e.preventDefault()}
                     className="absolute inset-0 w-full h-full resize-none p-4 font-mono text-sm bg-card text-foreground focus:outline-none leading-6"
                     spellCheck={false} autoComplete="off" autoCorrect="off" autoCapitalize="off"
                     data-gramm="false" data-enable-grammarly="false"
@@ -634,9 +634,7 @@ export default function BattleArena() {
                       <div className="flex items-center justify-between px-4 py-2.5 border-b border-border shrink-0">
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-sm">Test Results</span>
-                          <span className="text-xs text-muted-foreground">
-                            {testResults.filter((r) => r.passed).length}/{testResults.length} passed
-                          </span>
+                          <span className="text-xs text-muted-foreground">{testResults.filter((r) => r.passed).length}/{testResults.length} passed</span>
                         </div>
                         <button onClick={() => setShowResults(false)} className="p-1 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground" aria-label="Close">
                           <XCircle className="h-4 w-4" />
@@ -666,23 +664,20 @@ export default function BattleArena() {
         </ResizablePanel>
         <ResizableHandle />
 
-        {/* Right: Competition Panel */}
         <ResizablePanel defaultSize="20" minSize="20" maxSize="20">
           <div className="h-full border-l border-border bg-card flex flex-col">
-
-            {/* Live Score */}
             <div className="p-4 border-b border-border">
               <div className="flex items-center gap-2 mb-4">
                 <Zap className="h-4 w-4 text-amber-500" />
                 <h3 className="font-bold text-sm">Live Score</h3>
               </div>
               <div className="space-y-3">
-                <div className={cn("relative overflow-hidden flex items-center justify-between p-3.5 rounded-xl border transition-all duration-500", iLeading ? "bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.15)]" : "bg-muted/50 border-border")}>
+                <div className={cn("relative overflow-hidden flex items-center justify-between p-3.5 rounded-xl border transition-all duration-500", iLeading ? "bg-emerald-500/10 border-emerald-500/30" : "bg-muted/50 border-border")}>
                   {iLeading && <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-emerald-500 to-transparent" />}
                   <div className="flex items-center gap-2">{iLeading && <Trophy className="h-3.5 w-3.5 text-emerald-500" />}<span className="font-semibold text-sm">You</span></div>
                   <span className={cn("font-black font-mono text-xl transition-all duration-300", iLeading ? "text-emerald-500" : "text-foreground", myScorePulse && "scale-125")}>{myScore}</span>
                 </div>
-                <div className={cn("relative overflow-hidden flex items-center justify-between p-3.5 rounded-xl border transition-all duration-500", !iLeading ? "bg-rose-500/10 border-rose-500/30 shadow-[0_0_12px_rgba(239,68,68,0.15)]" : "bg-muted/50 border-border")}>
+                <div className={cn("relative overflow-hidden flex items-center justify-between p-3.5 rounded-xl border transition-all duration-500", !iLeading ? "bg-rose-500/10 border-rose-500/30" : "bg-muted/50 border-border")}>
                   {!iLeading && <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-rose-500 to-transparent" />}
                   <div className="flex items-center gap-2">{!iLeading && <Trophy className="h-3.5 w-3.5 text-rose-500" />}<span className="font-semibold text-sm">Opponent</span></div>
                   <span className={cn("font-black font-mono text-xl transition-all duration-300", !iLeading ? "text-rose-500" : "text-foreground", oppScorePulse && "scale-125")}>{opponentScore}</span>
@@ -695,12 +690,11 @@ export default function BattleArena() {
               </div>
             </div>
 
-            {/* Progress */}
             <div className="p-4 border-b border-border">
               <h3 className="font-bold text-sm mb-4">Your Progress</h3>
               <div className="space-y-2.5">
                 {difficultyOrder.map((diff) => {
-                  const maxPts = { Easy: 100, Medium: 200, Hard: 300 }[diff];
+                  const maxPts = DIFFICULTY_POINTS[diff];
                   const earned = myProgress[diff];
                   return (
                     <div key={diff} className="flex items-center justify-between">
@@ -714,7 +708,6 @@ export default function BattleArena() {
               </div>
             </div>
 
-            {/* Submissions */}
             <div className="flex-1 p-4 overflow-y-auto">
               <h3 className="font-bold text-sm mb-4">Submissions</h3>
               <div className="space-y-2">

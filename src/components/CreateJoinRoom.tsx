@@ -1,14 +1,25 @@
 import { useState } from "react";
 import { Plus, LogIn } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useUser } from "@clerk/react";
 
 export function CreateJoinRoom() {
   const navigate = useNavigate();
+  const { user } = useUser();
   const [roomInput, setRoomInput] = useState("");
+
+  const username =
+    user?.username ||
+    user?.primaryEmailAddress?.emailAddress?.split("@")[0] ||
+    "player";
 
   const createRoom = () => {
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-    navigate(`/waiting/${code}`);
+    navigate(`/waiting/${code}?role=host&username=${username}`);
+  };
+
+  const joinRoom = () => {
+    navigate(`/waiting/${roomInput}?role=guest&username=${username}`);
   };
 
   return (
@@ -47,7 +58,7 @@ export function CreateJoinRoom() {
             className="flex-1 bg-muted border border-border rounded-lg px-3 py-2 text-sm font-mono font-semibold tracking-widest placeholder:text-muted-foreground/50 placeholder:font-normal placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-blue-500/30 text-foreground"
           />
           <button
-            onClick={() => navigate(`/waiting/${roomInput}`)}
+            onClick={joinRoom}
             disabled={roomInput.length < 4}
             className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors"
           >
