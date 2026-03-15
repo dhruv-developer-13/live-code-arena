@@ -13,7 +13,7 @@
         {
           "input": "nums = [2,7,11,15]\ntarget = 9",
           "output": "[0, 1]",
-          "explanation": "nums[0] + nums[1] = 2 + 7 = 9, so return [0, 1]."
+          "explanation": "nums[0] + nums[1] = 2 + 7 = 9."
         },
         {
           "input": "nums = [3,2,4]\ntarget = 6",
@@ -22,71 +22,1654 @@
         }
       ],
       "testCases": [
-  { "input": "2 7 11 15\n9", "expected": "[0, 1]" },
-  { "input": "3 2 4\n6",     "expected": "[1, 2]" },
-  { "input": "3 3\n6",       "expected": "[0, 1]" },
-  { "input": "1 2 3 4 5\n9", "expected": "[3, 4]" },
-  { "input": "-1 -2 -3 -4 -5\n-8", "expected": "[2, 4]" }
-]
+        {
+          "input": "1 2\n3",
+          "expected": "[0, 1]"
+        },
+        {
+          "input": "3 3 4\n6",
+          "expected": "[0, 1]"
+        },
+        {
+          "input": "1 2 3 4 6 8\n10",
+          "expected": "[3, 5]"
+        },
+        {
+          "input": "10 9 8 7 3 1\n11",
+          "expected": "[0, 5]"
+        },
+        {
+          "input": "-5 4 10 -2 7\n5",
+          "expected": "[0, 2]"
+        },
+        {
+          "input": "0 4 3 0\n0",
+          "expected": "[0, 3]"
+        },
+        {
+          "input": "1000000000 -1000000000 3 7\n0",
+          "expected": "[0, 1]"
+        },
+        {
+          "input": "2 7 11 15 1 3\n9",
+          "expected": "[0, 1]"
+        },
+        {
+          "input": "1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100\n199",
+          "expected": "[98, 99]"
+        },
+        {
+          "input": "1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 180 181 182 183 184 185 186 187 188 189 190 191 192 193 194 195 196 197 198 199 200 201 202 203 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 222 223 224 225 226 227 228 229 230 231 232 233 234 235 236 237 238 239 240 241 242 243 244 245 246 247 248 249 250 251 252 253 254 255 256 257 258 259 260 261 262 263 264 265 266 267 268 269 270 271 272 273 274 275 276 277 278 279 280 281 282 283 284 285 286 287 288 289 290 291 292 293 294 295 296 297 298 299 300 301 302 303 304 305 306 307 308 309 310 311 312 313 314 315 316 317 318 319 320 321 322 323 324 325 326 327 328 329 330 331 332 333 334 335 336 337 338 339 340 341 342 343 344 345 346 347 348 349 350 351 352 353 354 355 356 357 358 359 360 361 362 363 364 365 366 367 368 369 370 371 372 373 374 375 376 377 378 379 380 381 382 383 384 385 386 387 388 389 390 391 392 393 394 395 396 397 398 399 400 401 402 403 404 405 406 407 408 409 410 411 412 413 414 415 416 417 418 419 420 421 422 423 424 425 426 427 428 429 430 431 432 433 434 435 436 437 438 439 440 441 442 443 444 445 446 447 448 449 450 451 452 453 454 455 456 457 458 459 460 461 462 463 464 465 466 467 468 469 470 471 472 473 474 475 476 477 478 479 480 481 482 483 484 485 486 487 488 489 490 491 492 493 494 495 496 497 498 499 500 501 502 503 504 505 506 507 508 509 510 511 512 513 514 515 516 517 518 519 520 521 522 523 524 525 526 527 528 529 530 531 532 533 534 535 536 537 538 539 540 541 542 543 544 545 546 547 548 549 550 551 552 553 554 555 556 557 558 559 560 561 562 563 564 565 566 567 568 569 570 571 572 573 574 575 576 577 578 579 580 581 582 583 584 585 586 587 588 589 590 591 592 593 594 595 596 597 598 599 600 601 602 603 604 605 606 607 608 609 610 611 612 613 614 615 616 617 618 619 620 621 622 623 624 625 626 627 628 629 630 631 632 633 634 635 636 637 638 639 640 641 642 643 644 645 646 647 648 649 650 651 652 653 654 655 656 657 658 659 660 661 662 663 664 665 666 667 668 669 670 671 672 673 674 675 676 677 678 679 680 681 682 683 684 685 686 687 688 689 690 691 692 693 694 695 696 697 698 699 700 701 702 703 704 705 706 707 708 709 710 711 712 713 714 715 716 717 718 719 720 721 722 723 724 725 726 727 728 729 730 731 732 733 734 735 736 737 738 739 740 741 742 743 744 745 746 747 748 749 750 751 752 753 754 755 756 757 758 759 760 761 762 763 764 765 766 767 768 769 770 771 772 773 774 775 776 777 778 779 780 781 782 783 784 785 786 787 788 789 790 791 792 793 794 795 796 797 798 799 800 801 802 803 804 805 806 807 808 809 810 811 812 813 814 815 816 817 818 819 820 821 822 823 824 825 826 827 828 829 830 831 832 833 834 835 836 837 838 839 840 841 842 843 844 845 846 847 848 849 850 851 852 853 854 855 856 857 858 859 860 861 862 863 864 865 866 867 868 869 870 871 872 873 874 875 876 877 878 879 880 881 882 883 884 885 886 887 888 889 890 891 892 893 894 895 896 897 898 899 900 901 902 903 904 905 906 907 908 909 910 911 912 913 914 915 916 917 918 919 920 921 922 923 924 925 926 927 928 929 930 931 932 933 934 935 936 937 938 939 940 941 942 943 944 945 946 947 948 949 950 951 952 953 954 955 956 957 958 959 960 961 962 963 964 965 966 967 968 969 970 971 972 973 974 975 976 977 978 979 980 981 982 983 984 985 986 987 988 989 990 991 992 993 994 995 996 997 998 999 1000\n1999",
+          "expected": "[998, 999]"
+        }
+      ]
     },
     {
       "id": 2,
-      "difficulty": "Medium",
-      "title": "Longest Substring Without Repeating Characters",
-      "description": "Given a string s, find the length of the longest substring without repeating characters.",
-      "inputFormat": "A single string s",
-      "outputFormat": "An integer representing the length",
-      "constraints": "0 <= s.length <= 5 * 10^4\ns consists of English letters, digits, symbols and spaces",
-      "points": 200,
+      "difficulty": "Easy",
+      "title": "Valid Parentheses",
+      "description": "Given a string s containing just the characters '(', ')', '{', '}', '[' and ']', determine if the input string is valid. An input string is valid if open brackets are closed by the same type of brackets and in the correct order.",
+      "inputFormat": "Line 1: string s",
+      "outputFormat": "true or false",
+      "constraints": "1 <= s.length <= 10^4\ns consists of parentheses only '()[]{}'",
+      "points": 100,
       "examples": [
         {
-          "input": "s = \"abcabcbb\"",
-          "output": "3",
-          "explanation": "The answer is \"abc\", with the length of 3."
+          "input": "s = \"()\"",
+          "output": "true",
+          "explanation": "The parentheses match correctly."
         },
         {
-          "input": "s = \"bbbbb\"",
-          "output": "1",
-          "explanation": "The answer is \"b\", with the length of 1."
+          "input": "s = \"(]\"",
+          "output": "false",
+          "explanation": "Different types of brackets cannot close each other."
         }
       ],
       "testCases": [
-        { "input": "abcabcbb", "expected": "3" },
-        { "input": "bbbbb", "expected": "1" },
-        { "input": "pwwkew", "expected": "3" },
-        { "input": "abcdefg", "expected": "7" },
-        { "input": " ", "expected": "1" },
-        { "input": "dvdf", "expected": "3" }
+        {
+          "input": "()",
+          "expected": "true"
+        },
+        {
+          "input": "()[]{}",
+          "expected": "true"
+        },
+        {
+          "input": "(]",
+          "expected": "false"
+        },
+        {
+          "input": "([)]",
+          "expected": "false"
+        },
+        {
+          "input": "{[]}",
+          "expected": "true"
+        },
+        {
+          "input": "(",
+          "expected": "false"
+        },
+        {
+          "input": "(((((((((())))))))))",
+          "expected": "true"
+        },
+        {
+          "input": "(((((((((((",
+          "expected": "false"
+        },
+        {
+          "input": "(([]){})",
+          "expected": "true"
+        },
+        {
+          "input": "((({{{[[[]]]}}})))[]{}",
+          "expected": "true"
+        }
       ]
     },
     {
       "id": 3,
-      "difficulty": "Hard",
-      "title": "Median of Two Sorted Arrays",
-      "description": "Given two sorted arrays nums1 and nums2 of size m and n respectively, return the median of the two sorted arrays. The overall run time complexity should be O(log(m+n)).",
-      "inputFormat": "Line 1: sorted array nums1\nLine 2: sorted array nums2",
-      "outputFormat": "A float rounded to 5 decimal places",
-      "constraints": "nums1.length == m, nums2.length == n\n0 <= m, n <= 1000\n0 <= m + n <= 2000\nTime complexity must be O(log(m+n))",
-      "points": 300,
+      "difficulty": "Easy",
+      "title": "Merge Two Sorted Lists",
+      "description": "You are given the heads of two sorted linked lists list1 and list2. Merge the two lists into one sorted list. The list should be made by splicing together the nodes of the first two lists. Return the head of the merged linked list.",
+      "inputFormat": "Line 1: list1 elements (space-separated integers)\nLine 2: list2 elements (space-separated integers)",
+      "outputFormat": "Merged sorted list (space-separated integers)",
+      "constraints": "The number of nodes in both lists is in the range [0, 50]\n-100 <= Node.val <= 100\nBoth list1 and list2 are sorted in non-decreasing order",
+      "points": 100,
       "examples": [
         {
-          "input": "nums1 = [1,3]\nnums2 = [2]",
-          "output": "2.00000",
-          "explanation": "Merged array = [1,2,3], median is 2.0."
+          "input": "list1 = [1,2,4]\nlist2 = [1,3,4]",
+          "output": "[1,1,2,3,4,4]",
+          "explanation": "Merging both sorted lists results in a single sorted list."
         },
         {
-          "input": "nums1 = [1,2]\nnums2 = [3,4]",
-          "output": "2.50000",
-          "explanation": "Merged array = [1,2,3,4], median is (2+3)/2 = 2.5."
+          "input": "list1 = []\nlist2 = []",
+          "output": "[]",
+          "explanation": "Both lists are empty."
         }
       ],
       "testCases": [
-        { "input": "1 3\n2", "expected": "2.00000" },
-        { "input": "1 2\n3 4", "expected": "2.50000" },
-        { "input": "0 0\n0 0", "expected": "0.00000" },
-        { "input": "\n1", "expected": "1.00000" },
-        { "input": "1 3 5 7\n2 4 6 8", "expected": "4.50000" },
-        { "input": "1 2 3\n4 5 6 7", "expected": "4.00000" }
+        {
+          "input": "1 2 4\n1 3 4",
+          "expected": "1 1 2 3 4 4"
+        },
+        {
+          "input": "\n",
+          "expected": ""
+        },
+        {
+          "input": "\n1 2 3",
+          "expected": "1 2 3"
+        },
+        {
+          "input": "1 3 5\n2 4 6",
+          "expected": "1 2 3 4 5 6"
+        },
+        {
+          "input": "1 1 1\n1 1",
+          "expected": "1 1 1 1 1"
+        },
+        {
+          "input": "-10 -5 0\n-6 -3 2",
+          "expected": "-10 -6 -5 -3 0 2"
+        },
+        {
+          "input": "5 6 7\n1 2 3 4",
+          "expected": "1 2 3 4 5 6 7"
+        },
+        {
+          "input": "1 2 3 4 5\n",
+          "expected": "1 2 3 4 5"
+        },
+        {
+          "input": "2 2 2 2\n2 2 2",
+          "expected": "2 2 2 2 2 2 2"
+        },
+        {
+          "input": "1 4 7 10 13\n2 3 5 6 8 9 11 12",
+          "expected": "1 2 3 4 5 6 7 8 9 10 11 12 13"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "difficulty": "Easy",
+      "title": "Climbing Stairs",
+      "description": "You are climbing a staircase. It takes n steps to reach the top. Each time you can either climb 1 step or 2 steps. In how many distinct ways can you climb to the top?",
+      "inputFormat": "Line 1: integer n",
+      "outputFormat": "Integer representing number of distinct ways",
+      "constraints": "1 <= n <= 45",
+      "points": 100,
+      "examples": [
+        {
+          "input": "n = 2",
+          "output": "2",
+          "explanation": "There are two ways: (1+1) and (2)."
+        },
+        {
+          "input": "n = 3",
+          "output": "3",
+          "explanation": "Ways: (1+1+1), (1+2), (2+1)."
+        }
+      ],
+      "testCases": [
+        {
+          "input": "1",
+          "expected": "1"
+        },
+        {
+          "input": "2",
+          "expected": "2"
+        },
+        {
+          "input": "3",
+          "expected": "3"
+        },
+        {
+          "input": "4",
+          "expected": "5"
+        },
+        {
+          "input": "5",
+          "expected": "8"
+        },
+        {
+          "input": "10",
+          "expected": "89"
+        },
+        {
+          "input": "20",
+          "expected": "10946"
+        },
+        {
+          "input": "30",
+          "expected": "1346269"
+        },
+        {
+          "input": "44",
+          "expected": "1134903170"
+        },
+        {
+          "input": "45",
+          "expected": "1836311903"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "difficulty": "Easy",
+      "title": "Same Tree",
+      "description": "Given the roots of two binary trees p and q, write a function to check if they are the same or not. Two binary trees are considered the same if they are structurally identical and the nodes have the same value.",
+      "inputFormat": "Line 1: level-order traversal of tree p (use 'null' for missing nodes)\nLine 2: level-order traversal of tree q (use 'null' for missing nodes)",
+      "outputFormat": "true or false",
+      "constraints": "The number of nodes in both trees is in the range [0, 100]\n-10^4 <= Node.val <= 10^4",
+      "points": 100,
+      "examples": [
+        {
+          "input": "p = [1,2,3]\nq = [1,2,3]",
+          "output": "true",
+          "explanation": "Both trees are structurally identical with the same node values."
+        },
+        {
+          "input": "p = [1,2]\nq = [1,null,2]",
+          "output": "false",
+          "explanation": "The structures of the trees differ."
+        }
+      ],
+      "testCases": [
+        {
+          "input": "1 2 3\n1 2 3",
+          "expected": "true"
+        },
+        {
+          "input": "1 2\n1 null 2",
+          "expected": "false"
+        },
+        {
+          "input": "\n",
+          "expected": "true"
+        },
+        {
+          "input": "1\n1",
+          "expected": "true"
+        },
+        {
+          "input": "1\n2",
+          "expected": "false"
+        },
+        {
+          "input": "1 2 1\n1 1 2",
+          "expected": "false"
+        },
+        {
+          "input": "5 3 7 2 4 6 8\n5 3 7 2 4 6 8",
+          "expected": "true"
+        },
+        {
+          "input": "1 2 3 null 4\n1 2 3 4",
+          "expected": "false"
+        },
+        {
+          "input": "10 5 15 3 7 null 18\n10 5 15 3 7 null 18",
+          "expected": "true"
+        },
+        {
+          "input": "2 2 2 3 null null 3\n2 2 2 null 3 3",
+          "expected": "false"
+        },
+        {
+          "input": "\n1",
+          "expected": "false"
+        },
+        {
+          "input": "1 null 2 null 3 null 4\n1 null 2 null 3 null 4",
+          "expected": "true"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "difficulty": "Easy",
+      "title": "Maximum Depth of Binary Tree",
+      "description": "Given the root of a binary tree, return its maximum depth. The maximum depth is the number of nodes along the longest path from the root node down to the farthest leaf node.",
+      "inputFormat": "Line 1: level-order traversal of the binary tree (use 'null' for missing nodes)",
+      "outputFormat": "Integer representing the maximum depth",
+      "constraints": "The number of nodes in the tree is in the range [0, 10^4]\n-100 <= Node.val <= 100",
+      "points": 100,
+      "examples": [
+        {
+          "input": "root = [3,9,20,null,null,15,7]",
+          "output": "3",
+          "explanation": "The longest path is 3 -> 20 -> 15 or 3 -> 20 -> 7."
+        },
+        {
+          "input": "root = [1,null,2]",
+          "output": "2",
+          "explanation": "The longest path is 1 -> 2."
+        }
+      ],
+      "testCases": [
+        {
+          "input": "",
+          "expected": "0"
+        },
+        {
+          "input": "1",
+          "expected": "1"
+        },
+        {
+          "input": "1 2 3",
+          "expected": "2"
+        },
+        {
+          "input": "3 9 20 null null 15 7",
+          "expected": "3"
+        },
+        {
+          "input": "1 2 null 3 null 4 null 5",
+          "expected": "5"
+        },
+        {
+          "input": "1 null 2 null 3 null 4 null 5",
+          "expected": "5"
+        },
+        {
+          "input": "5 3 8 1 4 7 9",
+          "expected": "3"
+        },
+        {
+          "input": "10 5 15 3 7 12 18 1 null null null null null null 20",
+          "expected": "4"
+        },
+        {
+          "input": "1 2 3 4 5 6 7 8 9 10 11 12 13 14 15",
+          "expected": "4"
+        },
+        {
+          "input": "1 2 null 3 null 4 null 5 null 6 null 7 null 8 null 9",
+          "expected": "9"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "difficulty": "Easy",
+      "title": "Best Time to Buy and Sell Stock",
+      "description": "You are given an array prices where prices[i] is the price of a given stock on the ith day. You want to maximize your profit by choosing a single day to buy one stock and choosing a different day in the future to sell that stock. Return the maximum profit you can achieve from this transaction. If you cannot achieve any profit, return 0.",
+      "inputFormat": "Line 1: list of integers prices (space-separated)",
+      "outputFormat": "Integer representing maximum profit",
+      "constraints": "1 <= prices.length <= 10^5\n0 <= prices[i] <= 10^4",
+      "points": 100,
+      "examples": [
+        {
+          "input": "prices = [7,1,5,3,6,4]",
+          "output": "5",
+          "explanation": "Buy on day 2 (price=1) and sell on day 5 (price=6), profit = 5."
+        },
+        {
+          "input": "prices = [7,6,4,3,1]",
+          "output": "0",
+          "explanation": "Prices keep decreasing so no profit is possible."
+        }
+      ],
+      "testCases": [
+        {
+          "input": "7 1 5 3 6 4",
+          "expected": "5"
+        },
+        {
+          "input": "7 6 4 3 1",
+          "expected": "0"
+        },
+        {
+          "input": "1",
+          "expected": "0"
+        },
+        {
+          "input": "1 2",
+          "expected": "1"
+        },
+        {
+          "input": "2 1 2 1 0 1 2",
+          "expected": "2"
+        },
+        {
+          "input": "3 3 3 3 3",
+          "expected": "0"
+        },
+        {
+          "input": "9 8 7 1 10",
+          "expected": "9"
+        },
+        {
+          "input": "2 4 1",
+          "expected": "2"
+        },
+        {
+          "input": "1 2 3 4 5 6 7 8 9 10",
+          "expected": "9"
+        },
+        {
+          "input": "10 9 8 7 6 5 4 3 2 1",
+          "expected": "0"
+        },
+        {
+          "input": "5 4 3 2 10 1",
+          "expected": "8"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "difficulty": "Easy",
+      "title": "Valid Palindrome",
+      "description": "Given a string s, determine if it is a palindrome, considering only alphanumeric characters and ignoring cases.",
+      "inputFormat": "Line 1: string s",
+      "outputFormat": "true or false",
+      "constraints": "1 <= s.length <= 2 * 10^5\ns consists only of printable ASCII characters",
+      "points": 100,
+      "examples": [
+        {
+          "input": "s = \"A man, a plan, a canal: Panama\"",
+          "output": "true",
+          "explanation": "After removing non-alphanumeric characters and ignoring case, it becomes 'amanaplanacanalpanama'."
+        },
+        {
+          "input": "s = \"race a car\"",
+          "output": "false",
+          "explanation": "After processing, it becomes 'raceacar' which is not a palindrome."
+        }
+      ],
+      "testCases": [
+        {
+          "input": "A man, a plan, a canal: Panama",
+          "expected": "true"
+        },
+        {
+          "input": "race a car",
+          "expected": "false"
+        },
+        {
+          "input": " ",
+          "expected": "true"
+        },
+        {
+          "input": "a.",
+          "expected": "true"
+        },
+        {
+          "input": "ab@a",
+          "expected": "true"
+        },
+        {
+          "input": "0P",
+          "expected": "false"
+        },
+        {
+          "input": "MadamImAdam",
+          "expected": "true"
+        },
+        {
+          "input": "No 'x' in Nixon",
+          "expected": "true"
+        },
+        {
+          "input": "abcdefgfedcba",
+          "expected": "true"
+        },
+        {
+          "input": "abcddcbae",
+          "expected": "false"
+        },
+        {
+          "input": ".,!?",
+          "expected": "true"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "difficulty": "Easy",
+      "title": "Linked List Cycle",
+      "description": "Given head, the head of a linked list, determine if the linked list has a cycle in it. There is a cycle in a linked list if there is some node in the list that can be reached again by continuously following the next pointer.",
+      "inputFormat": "Line 1: list elements (space-separated integers)\nLine 2: position pos where tail connects (−1 if no cycle)",
+      "outputFormat": "true or false",
+      "constraints": "The number of nodes in the list is in the range [0, 10^4]\n-10^5 <= Node.val <= 10^5\npos is -1 or a valid index in the linked list",
+      "points": 100,
+      "examples": [
+        {
+          "input": "head = [3,2,0,-4], pos = 1",
+          "output": "true",
+          "explanation": "The tail connects to node index 1 creating a cycle."
+        },
+        {
+          "input": "head = [1,2], pos = -1",
+          "output": "false",
+          "explanation": "There is no cycle in the list."
+        }
+      ],
+      "testCases": [
+        {
+          "input": "3 2 0 -4\n1",
+          "expected": "true"
+        },
+        {
+          "input": "1 2\n0",
+          "expected": "true"
+        },
+        {
+          "input": "1\n-1",
+          "expected": "false"
+        },
+        {
+          "input": "1 2\n-1",
+          "expected": "false"
+        },
+        {
+          "input": "5 4 3 2 1\n2",
+          "expected": "true"
+        },
+        {
+          "input": "10 20 30 40 50\n-1",
+          "expected": "false"
+        },
+        {
+          "input": "7 7 7 7 7\n3",
+          "expected": "true"
+        },
+        {
+          "input": "1 2 3 4 5 6 7 8 9 10\n0",
+          "expected": "true"
+        },
+        {
+          "input": "1 2 3 4 5\n4",
+          "expected": "true"
+        },
+        {
+          "input": "100\n0",
+          "expected": "true"
+        },
+        {
+          "input": "\n-1",
+          "expected": "false"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "difficulty": "Easy",
+      "title": "Reverse Bits",
+      "description": "Reverse bits of a given 32 bits unsigned integer.",
+      "inputFormat": "Line 1: 32-bit unsigned integer n",
+      "outputFormat": "Unsigned integer representing the reversed bit value",
+      "constraints": "The input must be a binary string of length 32",
+      "points": 100,
+      "examples": [
+        {
+          "input": "n = 00000010100101000001111010011100",
+          "output": "964176192",
+          "explanation": "Reversing the bits results in 00111001011110000010100101000000."
+        },
+        {
+          "input": "n = 11111111111111111111111111111101",
+          "output": "3221225471",
+          "explanation": "Reversing results in 10111111111111111111111111111111."
+        }
+      ],
+      "testCases": [
+        {
+          "input": "00000000000000000000000000000000",
+          "expected": "0"
+        },
+        {
+          "input": "11111111111111111111111111111111",
+          "expected": "4294967295"
+        },
+        {
+          "input": "00000000000000000000000000000001",
+          "expected": "2147483648"
+        },
+        {
+          "input": "10000000000000000000000000000000",
+          "expected": "1"
+        },
+        {
+          "input": "00000010100101000001111010011100",
+          "expected": "964176192"
+        },
+        {
+          "input": "11111111111111111111111111111101",
+          "expected": "3221225471"
+        },
+        {
+          "input": "01010101010101010101010101010101",
+          "expected": "2863311530"
+        },
+        {
+          "input": "10101010101010101010101010101010",
+          "expected": "1431655765"
+        },
+        {
+          "input": "00000000000000001111111111111111",
+          "expected": "4294901760"
+        },
+        {
+          "input": "11110000111100001111000011110000",
+          "expected": "252645135"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "difficulty": "Easy",
+      "title": "Number of 1 Bits",
+      "description": "Write a function that takes an unsigned integer and returns the number of '1' bits it has (also known as the Hamming weight).",
+      "inputFormat": "Line 1: 32-bit unsigned integer n (binary string)",
+      "outputFormat": "Integer representing the number of set bits",
+      "constraints": "The input must be a binary string of length 32",
+      "points": 100,
+      "examples": [
+        {
+          "input": "n = 00000000000000000000000000001011",
+          "output": "3",
+          "explanation": "The input binary string has three '1' bits."
+        },
+        {
+          "input": "n = 00000000000000000000000010000000",
+          "output": "1",
+          "explanation": "The binary representation contains a single '1'."
+        }
+      ],
+      "testCases": [
+        {
+          "input": "00000000000000000000000000000000",
+          "expected": "0"
+        },
+        {
+          "input": "11111111111111111111111111111111",
+          "expected": "32"
+        },
+        {
+          "input": "00000000000000000000000000000001",
+          "expected": "1"
+        },
+        {
+          "input": "10000000000000000000000000000000",
+          "expected": "1"
+        },
+        {
+          "input": "00000000000000000000000000001011",
+          "expected": "3"
+        },
+        {
+          "input": "00000000000000000000000010000000",
+          "expected": "1"
+        },
+        {
+          "input": "01010101010101010101010101010101",
+          "expected": "16"
+        },
+        {
+          "input": "10101010101010101010101010101010",
+          "expected": "16"
+        },
+        {
+          "input": "11110000111100001111000011110000",
+          "expected": "16"
+        },
+        {
+          "input": "00001111000011110000111100001111",
+          "expected": "16"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "difficulty": "Easy",
+      "title": "Reverse Linked List",
+      "description": "Given the head of a singly linked list, reverse the list, and return the reversed list.",
+      "inputFormat": "Line 1: linked list elements (space-separated integers)",
+      "outputFormat": "Reversed linked list (space-separated integers)",
+      "constraints": "The number of nodes in the list is in the range [0, 5000]\n-5000 <= Node.val <= 5000",
+      "points": 100,
+      "examples": [
+        {
+          "input": "head = [1,2,3,4,5]",
+          "output": "[5,4,3,2,1]",
+          "explanation": "The linked list is reversed."
+        },
+        {
+          "input": "head = [1,2]",
+          "output": "[2,1]",
+          "explanation": "The list is reversed."
+        }
+      ],
+      "testCases": [
+        {
+          "input": "",
+          "expected": ""
+        },
+        {
+          "input": "1",
+          "expected": "1"
+        },
+        {
+          "input": "1 2",
+          "expected": "2 1"
+        },
+        {
+          "input": "1 2 3 4 5",
+          "expected": "5 4 3 2 1"
+        },
+        {
+          "input": "5 4 3 2 1",
+          "expected": "1 2 3 4 5"
+        },
+        {
+          "input": "7 7 7 7",
+          "expected": "7 7 7 7"
+        },
+        {
+          "input": "-1 -2 -3 -4",
+          "expected": "-4 -3 -2 -1"
+        },
+        {
+          "input": "10 20 30 40 50 60",
+          "expected": "60 50 40 30 20 10"
+        },
+        {
+          "input": "100 200 300",
+          "expected": "300 200 100"
+        },
+        {
+          "input": "1 3 5 7 9 11 13",
+          "expected": "13 11 9 7 5 3 1"
+        },
+        {
+          "input": "1 2 1 2 1",
+          "expected": "1 2 1 2 1"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "difficulty": "Easy",
+      "title": "Contains Duplicate",
+      "description": "Given an integer array nums, return true if any value appears at least twice in the array, and return false if every element is distinct.",
+      "inputFormat": "Line 1: list of integers nums (space-separated)",
+      "outputFormat": "true or false",
+      "constraints": "1 <= nums.length <= 10^5\n-10^9 <= nums[i] <= 10^9",
+      "points": 100,
+      "examples": [
+        {
+          "input": "nums = [1,2,3,1]",
+          "output": "true",
+          "explanation": "The number 1 appears twice."
+        },
+        {
+          "input": "nums = [1,2,3,4]",
+          "output": "false",
+          "explanation": "All elements are distinct."
+        }
+      ],
+      "testCases": [
+        {
+          "input": "1",
+          "expected": "false"
+        },
+        {
+          "input": "1 2 3 1",
+          "expected": "true"
+        },
+        {
+          "input": "1 2 3 4 5",
+          "expected": "false"
+        },
+        {
+          "input": "0 0",
+          "expected": "true"
+        },
+        {
+          "input": "-1 -2 -3 -4 -5 -1",
+          "expected": "true"
+        },
+        {
+          "input": "10 20 30 40 50 60 70",
+          "expected": "false"
+        },
+        {
+          "input": "5 5 5 5 5",
+          "expected": "true"
+        },
+        {
+          "input": "1000000000 -1000000000 999999999 -999999999",
+          "expected": "false"
+        },
+        {
+          "input": "2 14 18 22 14",
+          "expected": "true"
+        },
+        {
+          "input": "1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20",
+          "expected": "false"
+        },
+        {
+          "input": "1 2 3 4 5 6 7 8 9 10 1",
+          "expected": "true"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "difficulty": "Easy",
+      "title": "Invert Binary Tree",
+      "description": "Given the root of a binary tree, invert the tree, and return its root.",
+      "inputFormat": "Line 1: level-order traversal of the binary tree (use 'null' for missing nodes)",
+      "outputFormat": "Level-order traversal of the inverted binary tree",
+      "constraints": "The number of nodes in the tree is in the range [0, 100]\n-100 <= Node.val <= 100",
+      "points": 100,
+      "examples": [
+        {
+          "input": "root = [4,2,7,1,3,6,9]",
+          "output": "[4,7,2,9,6,3,1]",
+          "explanation": "Each node's left and right children are swapped."
+        },
+        {
+          "input": "root = [2,1,3]",
+          "output": "[2,3,1]",
+          "explanation": "Left and right children are inverted."
+        }
+      ],
+      "testCases": [
+        {
+          "input": "",
+          "expected": ""
+        },
+        {
+          "input": "1",
+          "expected": "1"
+        },
+        {
+          "input": "2 1 3",
+          "expected": "2 3 1"
+        },
+        {
+          "input": "4 2 7 1 3 6 9",
+          "expected": "4 7 2 9 6 3 1"
+        },
+        {
+          "input": "1 2 null 3",
+          "expected": "1 null 2 null 3"
+        },
+        {
+          "input": "1 null 2 null 3",
+          "expected": "1 2 null 3 null"
+        },
+        {
+          "input": "5 3 8 1 4 7 9",
+          "expected": "5 8 3 9 7 4 1"
+        },
+        {
+          "input": "10 5 15 3 7 12 18",
+          "expected": "10 15 5 18 12 7 3"
+        },
+        {
+          "input": "1 2 3 4 5 6 7",
+          "expected": "1 3 2 7 6 5 4"
+        },
+        {
+          "input": "8 3 10 1 6 null 14 null null 4 7 13",
+          "expected": "8 10 3 14 null 6 1 null 13 7 4"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "difficulty": "Easy",
+      "title": "Valid Anagram",
+      "description": "Given two strings s and t, return true if t is an anagram of s, and false otherwise.",
+      "inputFormat": "Line 1: string s\nLine 2: string t",
+      "outputFormat": "true or false",
+      "constraints": "1 <= s.length, t.length <= 5 * 10^4\ns and t consist of lowercase English letters",
+      "points": 100,
+      "examples": [
+        {
+          "input": "s = \"anagram\"\nt = \"nagaram\"",
+          "output": "true",
+          "explanation": "Both strings contain the same characters with the same frequencies."
+        },
+        {
+          "input": "s = \"rat\"\nt = \"car\"",
+          "output": "false",
+          "explanation": "The characters differ."
+        }
+      ],
+      "testCases": [
+        {
+          "input": "anagram\nnagaram",
+          "expected": "true"
+        },
+        {
+          "input": "rat\ncar",
+          "expected": "false"
+        },
+        {
+          "input": "a\na",
+          "expected": "true"
+        },
+        {
+          "input": "ab\nba",
+          "expected": "true"
+        },
+        {
+          "input": "abcd\nabcde",
+          "expected": "false"
+        },
+        {
+          "input": "listen\nsilent",
+          "expected": "true"
+        },
+        {
+          "input": "hello\nbello",
+          "expected": "false"
+        },
+        {
+          "input": "aabbcc\nabcabc",
+          "expected": "true"
+        },
+        {
+          "input": "zzzzyyyy\nzzzyyyy",
+          "expected": "false"
+        },
+        {
+          "input": "leetcode\ncodeleet",
+          "expected": "true"
+        },
+        {
+          "input": "aabb\nabbb",
+          "expected": "false"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "difficulty": "Easy",
+      "title": "Meeting Rooms",
+      "description": "Given an array of meeting time intervals intervals where intervals[i] = [start_i, end_i], determine if a person could attend all meetings.",
+      "inputFormat": "Line 1: number of intervals n\nNext n lines: start end",
+      "outputFormat": "true or false",
+      "constraints": "0 <= intervals.length <= 10^4\n0 <= start_i < end_i <= 10^6",
+      "points": 100,
+      "examples": [
+        {
+          "input": "intervals = [[0,30],[5,10],[15,20]]",
+          "output": "false",
+          "explanation": "The meeting [0,30] overlaps with the others."
+        },
+        {
+          "input": "intervals = [[7,10],[2,4]]",
+          "output": "true",
+          "explanation": "No meetings overlap."
+        }
+      ],
+      "testCases": [
+        {
+          "input": "0",
+          "expected": "true"
+        },
+        {
+          "input": "1\n0 10",
+          "expected": "true"
+        },
+        {
+          "input": "2\n0 10\n5 15",
+          "expected": "false"
+        },
+        {
+          "input": "2\n0 5\n5 10",
+          "expected": "true"
+        },
+        {
+          "input": "3\n0 30\n5 10\n15 20",
+          "expected": "false"
+        },
+        {
+          "input": "3\n2 4\n7 10\n12 15",
+          "expected": "true"
+        },
+        {
+          "input": "4\n1 3\n2 6\n8 10\n15 18",
+          "expected": "false"
+        },
+        {
+          "input": "5\n1 2\n3 4\n5 6\n7 8\n9 10",
+          "expected": "true"
+        },
+        {
+          "input": "3\n0 100000\n100001 200000\n200001 300000",
+          "expected": "true"
+        },
+        {
+          "input": "3\n10 20\n15 25\n20 30",
+          "expected": "false"
+        },
+        {
+          "input": "3\n10 20\n0 5\n6 9",
+          "expected": "true"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "difficulty": "Easy",
+      "title": "Missing Number",
+      "description": "Given an array nums containing n distinct numbers in the range [0, n], return the only number in the range that is missing from the array.",
+      "inputFormat": "Line 1: list of integers nums (space-separated)",
+      "outputFormat": "Integer representing the missing number",
+      "constraints": "n == nums.length\n1 <= n <= 10^4\n0 <= nums[i] <= n\nAll numbers of nums are unique",
+      "points": 100,
+      "examples": [
+        {
+          "input": "nums = [3,0,1]",
+          "output": "2",
+          "explanation": "2 is the only number missing in the range [0,3]."
+        },
+        {
+          "input": "nums = [0,1]",
+          "output": "2",
+          "explanation": "2 is missing from the range [0,2]."
+        }
+      ],
+      "testCases": [
+        {
+          "input": "1",
+          "expected": "0"
+        },
+        {
+          "input": "0",
+          "expected": "1"
+        },
+        {
+          "input": "3 0 1",
+          "expected": "2"
+        },
+        {
+          "input": "0 1",
+          "expected": "2"
+        },
+        {
+          "input": "9 6 4 2 3 5 7 0 1",
+          "expected": "8"
+        },
+        {
+          "input": "1 2 3 4 5",
+          "expected": "0"
+        },
+        {
+          "input": "0 1 2 3 4",
+          "expected": "5"
+        },
+        {
+          "input": "2 0",
+          "expected": "1"
+        },
+        {
+          "input": "4 2 1 0",
+          "expected": "3"
+        },
+        {
+          "input": "0 2 3 4 5 6 7 8 9 10 1 12 13 14 15",
+          "expected": "11"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "difficulty": "Easy",
+      "title": "Counting Bits",
+      "description": "Given an integer n, return an array ans of length n + 1 such that for each i (0 <= i <= n), ans[i] is the number of 1's in the binary representation of i.",
+      "inputFormat": "Line 1: integer n",
+      "outputFormat": "Space-separated integers representing the count of set bits from 0 to n",
+      "constraints": "0 <= n <= 10^5",
+      "points": 100,
+      "examples": [
+        {
+          "input": "n = 2",
+          "output": "[0,1,1]",
+          "explanation": "0 -> 0, 1 -> 1, 2 -> 10 (1 bit)."
+        },
+        {
+          "input": "n = 5",
+          "output": "[0,1,1,2,1,2]",
+          "explanation": "Binary counts from 0 to 5."
+        }
+      ],
+      "testCases": [
+        {
+          "input": "0",
+          "expected": "0"
+        },
+        {
+          "input": "1",
+          "expected": "0 1"
+        },
+        {
+          "input": "2",
+          "expected": "0 1 1"
+        },
+        {
+          "input": "5",
+          "expected": "0 1 1 2 1 2"
+        },
+        {
+          "input": "7",
+          "expected": "0 1 1 2 1 2 2 3"
+        },
+        {
+          "input": "10",
+          "expected": "0 1 1 2 1 2 2 3 1 2 2"
+        },
+        {
+          "input": "16",
+          "expected": "0 1 1 2 1 2 2 3 1 2 2 3 2 3 3 4 1"
+        },
+        {
+          "input": "3",
+          "expected": "0 1 1 2"
+        },
+        {
+          "input": "8",
+          "expected": "0 1 1 2 1 2 2 3 1"
+        },
+        {
+          "input": "15",
+          "expected": "0 1 1 2 1 2 2 3 1 2 2 3 2 3 3 4"
+        },
+        {
+          "input": "32",
+          "expected": "0 1 1 2 1 2 2 3 1 2 2 3 2 3 3 4 1 2 2 3 2 3 3 4 2 3 3 4 3 4 4 5 1"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "difficulty": "Easy",
+      "title": "Subtree of Another Tree",
+      "description": "Given the roots of two binary trees root and subRoot, return true if there is a subtree of root with the same structure and node values of subRoot and false otherwise.",
+      "inputFormat": "Line 1: level-order traversal of root (use 'null' for missing nodes)\nLine 2: level-order traversal of subRoot (use 'null' for missing nodes)",
+      "outputFormat": "true or false",
+      "constraints": "The number of nodes in the root tree is in the range [1, 2000]\nThe number of nodes in the subRoot tree is in the range [1, 1000]\n-10^4 <= Node.val <= 10^4",
+      "points": 100,
+      "examples": [
+        {
+          "input": "root = [3,4,5,1,2]\nsubRoot = [4,1,2]",
+          "output": "true",
+          "explanation": "The subtree rooted at node 4 matches subRoot."
+        },
+        {
+          "input": "root = [3,4,5,1,2,null,null,null,null,0]\nsubRoot = [4,1,2]",
+          "output": "false",
+          "explanation": "Node values differ in the subtree."
+        }
+      ],
+      "testCases": [
+        {
+          "input": "3 4 5 1 2\n4 1 2",
+          "expected": "true"
+        },
+        {
+          "input": "3 4 5 1 2 null null null null 0\n4 1 2",
+          "expected": "false"
+        },
+        {
+          "input": "1 1\n1",
+          "expected": "true"
+        },
+        {
+          "input": "1 2 3\n2",
+          "expected": "true"
+        },
+        {
+          "input": "1 2 3\n4",
+          "expected": "false"
+        },
+        {
+          "input": "4 2 6 1 3 5 7\n2 1 3",
+          "expected": "true"
+        },
+        {
+          "input": "4 2 6 1 3 5 7\n6 5 8",
+          "expected": "false"
+        },
+        {
+          "input": "1 2 3 4 5 6 7\n3 6 7",
+          "expected": "true"
+        },
+        {
+          "input": "1 2 3 4 5 6 7\n3 7 6",
+          "expected": "false"
+        },
+        {
+          "input": "10 5 15 3 7 12 18\n7",
+          "expected": "true"
+        },
+        {
+          "input": "1 1 null 1\n1 null 1",
+          "expected": "false"
+        },
+        {
+          "input": "3 4 5 1 2 null null null null 0\n4 1 2",
+          "expected": "false"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "difficulty": "Medium",
+      "title": "Longest Substring Without Repeating Characters",
+      "description": "Given a string s, find the length of the longest substring without repeating characters.",
+      "inputFormat": "Line 1: string s",
+      "outputFormat": "Integer representing the length of the longest substring without repeating characters",
+      "constraints": "0 <= s.length <= 5 * 10^4\ns consists of English letters, digits, symbols and spaces",
+      "points": 100,
+      "examples": [
+        {
+          "input": "s = \"abcabcbb\"",
+          "output": "3",
+          "explanation": "The answer is 'abc', with length 3."
+        },
+        {
+          "input": "s = \"bbbbb\"",
+          "output": "1",
+          "explanation": "The answer is 'b', with length 1."
+        }
+      ],
+      "testCases": [
+        {
+          "input": "",
+          "expected": "0"
+        },
+        {
+          "input": "a",
+          "expected": "1"
+        },
+        {
+          "input": "abcabcbb",
+          "expected": "3"
+        },
+        {
+          "input": "bbbbb",
+          "expected": "1"
+        },
+        {
+          "input": "pwwkew",
+          "expected": "3"
+        },
+        {
+          "input": "dvdf",
+          "expected": "3"
+        },
+        {
+          "input": "abba",
+          "expected": "2"
+        },
+        {
+          "input": "abcdefghijklmnopqrstuvwxyz",
+          "expected": "26"
+        },
+        {
+          "input": "aab",
+          "expected": "2"
+        },
+        {
+          "input": "tmmzuxt",
+          "expected": "5"
+        },
+        {
+          "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "expected": "1"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "difficulty": "Medium",
+      "title": "Longest Palindromic Substring",
+      "description": "Given a string s, return the longest palindromic substring in s.",
+      "inputFormat": "Line 1: string s",
+      "outputFormat": "String representing the longest palindromic substring",
+      "constraints": "1 <= s.length <= 1000\ns consist of only digits and English letters",
+      "points": 100,
+      "examples": [
+        {
+          "input": "s = \"babad\"",
+          "output": "bab",
+          "explanation": "Another valid answer is 'aba'."
+        },
+        {
+          "input": "s = \"cbbd\"",
+          "output": "bb",
+          "explanation": "The longest palindrome substring is 'bb'."
+        }
+      ],
+      "testCases": [
+        {
+          "input": "a",
+          "expected": "a"
+        },
+        {
+          "input": "ac",
+          "expected": "a"
+        },
+        {
+          "input": "babad",
+          "expected": "bab"
+        },
+        {
+          "input": "cbbd",
+          "expected": "bb"
+        },
+        {
+          "input": "racecar",
+          "expected": "racecar"
+        },
+        {
+          "input": "aaaa",
+          "expected": "aaaa"
+        },
+        {
+          "input": "abcda",
+          "expected": "a"
+        },
+        {
+          "input": "forgeeksskeegfor",
+          "expected": "geeksskeeg"
+        },
+        {
+          "input": "abacdfgdcaba",
+          "expected": "aba"
+        },
+        {
+          "input": "banana",
+          "expected": "anana"
+        },
+        {
+          "input": "abba",
+          "expected": "abba"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "difficulty": "Medium",
+      "title": "Container With Most Water",
+      "description": "You are given an integer array height of length n. There are n vertical lines drawn such that the two endpoints of the ith line are (i, 0) and (i, height[i]). Find two lines that together with the x-axis form a container such that the container contains the most water.",
+      "inputFormat": "Line 1: list of integers height (space-separated)",
+      "outputFormat": "Integer representing the maximum area of water that can be contained",
+      "constraints": "n == height.length\n2 <= n <= 10^5\n0 <= height[i] <= 10^4",
+      "points": 100,
+      "examples": [
+        {
+          "input": "height = [1,8,6,2,5,4,8,3,7]",
+          "output": "49",
+          "explanation": "The maximum area is formed between heights 8 and 7."
+        },
+        {
+          "input": "height = [1,1]",
+          "output": "1",
+          "explanation": "The only container possible holds area 1."
+        }
+      ],
+      "testCases": [
+        {
+          "input": "1 1",
+          "expected": "1"
+        },
+        {
+          "input": "1 8 6 2 5 4 8 3 7",
+          "expected": "49"
+        },
+        {
+          "input": "1 2 3 4 5",
+          "expected": "6"
+        },
+        {
+          "input": "5 4 3 2 1",
+          "expected": "6"
+        },
+        {
+          "input": "1 3 2 5 25 24 5",
+          "expected": "24"
+        },
+        {
+          "input": "4 3 2 1 4",
+          "expected": "16"
+        },
+        {
+          "input": "1 2 1",
+          "expected": "2"
+        },
+        {
+          "input": "2 3 10 5 7 8 9",
+          "expected": "36"
+        },
+        {
+          "input": "6 9 3 4 5 8",
+          "expected": "32"
+        },
+        {
+          "input": "1 1000 1 1000 1",
+          "expected": "2000"
+        },
+        {
+          "input": "1000 1 1 1 1 1 1 1 1 1000",
+          "expected": "9000"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "difficulty": "Medium",
+      "title": "3Sum",
+      "description": "Given an integer array nums, return all the unique triplets [nums[i], nums[j], nums[k]] such that i != j, i != k, j != k and nums[i] + nums[j] + nums[k] == 0.",
+      "inputFormat": "Line 1: list of integers nums (space-separated)",
+      "outputFormat": "List of unique triplets that sum to zero",
+      "constraints": "3 <= nums.length <= 3000\n-10^5 <= nums[i] <= 10^5",
+      "points": 100,
+      "examples": [
+        {
+          "input": "nums = [-1,0,1,2,-1,-4]",
+          "output": "[[-1,-1,2],[-1,0,1]]",
+          "explanation": "Two unique triplets sum to zero."
+        },
+        {
+          "input": "nums = [0,1,1]",
+          "output": "[]",
+          "explanation": "No three numbers sum to zero."
+        }
+      ],
+      "testCases": [
+        {
+          "input": "-1 0 1 2 -1 -4",
+          "expected": "[[-1,-1,2],[-1,0,1]]"
+        },
+        {
+          "input": "0 1 1",
+          "expected": "[]"
+        },
+        {
+          "input": "0 0 0",
+          "expected": "[[0,0,0]]"
+        },
+        {
+          "input": "-2 0 1 1 2",
+          "expected": "[[-2,0,2],[-2,1,1]]"
+        },
+        {
+          "input": "-1 -1 -1 2 2",
+          "expected": "[[-1,-1,2]]"
+        },
+        {
+          "input": "-4 -2 -2 -2 0 1 2 3 4",
+          "expected": "[[-4,0,4],[-4,1,3],[-2,-2,4],[-2,0,2]]"
+        },
+        {
+          "input": "1 2 -2 -1",
+          "expected": "[]"
+        },
+        {
+          "input": "-3 -1 0 1 2 -1 -4",
+          "expected": "[[-3,1,2],[-1,-1,2],[-1,0,1]]"
+        },
+        {
+          "input": "-5 2 3 0 0 2 -2",
+          "expected": "[[-5,2,3],[-2,0,2]]"
+        },
+        {
+          "input": "-2 -1 0 1 2",
+          "expected": "[[-2,0,2],[-1,0,1]]"
+        },
+        {
+          "input": "0 0 0 0",
+          "expected": "[[0,0,0]]"
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "difficulty": "Medium",
+      "title": "Remove Nth Node From End of List",
+      "description": "Given the head of a linked list, remove the nth node from the end of the list and return its head.",
+      "inputFormat": "Line 1: linked list elements (space-separated integers)\nLine 2: integer n",
+      "outputFormat": "Linked list after removing the nth node from the end (space-separated integers)",
+      "constraints": "The number of nodes in the list is sz\n1 <= sz <= 30\n0 <= Node.val <= 100\n1 <= n <= sz",
+      "points": 100,
+      "examples": [
+        {
+          "input": "head = [1,2,3,4,5], n = 2",
+          "output": "[1,2,3,5]",
+          "explanation": "The 2nd node from the end (4) is removed."
+        },
+        {
+          "input": "head = [1], n = 1",
+          "output": "[]",
+          "explanation": "The only node is removed."
+        }
+      ],
+      "testCases": [
+        {
+          "input": "1\n1",
+          "expected": ""
+        },
+        {
+          "input": "1 2\n1",
+          "expected": "1"
+        },
+        {
+          "input": "1 2\n2",
+          "expected": "2"
+        },
+        {
+          "input": "1 2 3 4 5\n2",
+          "expected": "1 2 3 5"
+        },
+        {
+          "input": "1 2 3 4 5\n5",
+          "expected": "2 3 4 5"
+        },
+        {
+          "input": "10 20 30 40\n3",
+          "expected": "10 30 40"
+        },
+        {
+          "input": "5 6 7 8 9\n1",
+          "expected": "5 6 7 8"
+        },
+        {
+          "input": "1 1 1 1\n2",
+          "expected": "1 1 1"
+        },
+        {
+          "input": "2 4 6 8 10 12\n4",
+          "expected": "2 4 8 10 12"
+        },
+        {
+          "input": "100 200 300 400 500\n3",
+          "expected": "100 200 400 500"
+        },
+        {
+          "input": "1 2 3\n2",
+          "expected": "1 3"
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "difficulty": "Medium",
+      "title": "Search in Rotated Sorted Array",
+      "description": "There is an integer array nums sorted in ascending order (with distinct values). Prior to being passed to your function, nums is possibly rotated at an unknown pivot index. Given the array nums after the possible rotation and an integer target, return the index of target if it is in nums, or -1 if it is not in nums.",
+      "inputFormat": "Line 1: list of integers nums (space-separated)\nLine 2: integer target",
+      "outputFormat": "Integer representing the index of target or -1",
+      "constraints": "1 <= nums.length <= 5000\n-10^4 <= nums[i] <= 10^4\nAll values of nums are unique\nnums is sorted and rotated\n-10^4 <= target <= 10^4",
+      "points": 100,
+      "examples": [
+        {
+          "input": "nums = [4,5,6,7,0,1,2]\ntarget = 0",
+          "output": "4",
+          "explanation": "0 is found at index 4."
+        },
+        {
+          "input": "nums = [4,5,6,7,0,1,2]\ntarget = 3",
+          "output": "-1",
+          "explanation": "3 is not present in the array."
+        }
+      ],
+      "testCases": [
+        {
+          "input": "1\n1",
+          "expected": "0"
+        },
+        {
+          "input": "1\n0",
+          "expected": "-1"
+        },
+        {
+          "input": "4 5 6 7 0 1 2\n0",
+          "expected": "4"
+        },
+        {
+          "input": "4 5 6 7 0 1 2\n3",
+          "expected": "-1"
+        },
+        {
+          "input": "6 7 8 1 2 3 4 5\n3",
+          "expected": "5"
+        },
+        {
+          "input": "6 7 8 1 2 3 4 5\n6",
+          "expected": "0"
+        },
+        {
+          "input": "3 1\n1",
+          "expected": "1"
+        },
+        {
+          "input": "5 1 3\n5",
+          "expected": "0"
+        },
+        {
+          "input": "8 9 2 3 4 5 6 7\n6",
+          "expected": "6"
+        },
+        {
+          "input": "30 40 50 10 20\n10",
+          "expected": "3"
+        },
+        {
+          "input": "1 2 3 4 5\n4",
+          "expected": "3"
+        }
       ]
     }
   ]
