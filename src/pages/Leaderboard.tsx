@@ -6,8 +6,17 @@ import {
 import { cn } from "@/lib/utils";
 import { Header } from "@/components/Header";
 import { useUser } from "@clerk/react";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
-// ─── TYPES ────────────────────────────────────────────────────────────────────
+//  TYPES 
 
 type TimeFilter = "all" | "month" | "week";
 
@@ -23,7 +32,7 @@ interface LeaderboardEntry {
   trendValue: number;
 }
 
-// ─── HARDCODED DATA (replace with DB query) ──────────────────────────────────
+//  HARDCODED DATA (replace with DB query) 
 // TODO: const entries = await getLeaderboard({ filter: timeFilter })
 // TODO: const myStats = await getMyRank(session.userId)
 
@@ -55,7 +64,7 @@ const MY_STATS: LeaderboardEntry = {
 
 const PLATFORM_STATS = { totalPlayers: 1247, battlesThisWeek: 8432 };
 
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
+//  HELPERS 
 
 function getRankDisplay(rank: number) {
   if (rank === 1) return <Crown className="h-5 w-5 text-amber-400" />;
@@ -80,7 +89,7 @@ function Avatar({ username, size = "md" }: { username: string; size?: "sm" | "md
   );
 }
 
-// ─── SUBCOMPONENTS ────────────────────────────────────────────────────────────
+//  SUBCOMPONENTS 
 
 function TrendBadge({ trend, value }: { trend: "up" | "down" | "same"; value: number }) {
   if (trend === "same") return <Minus className="h-4 w-4 text-muted-foreground/50" />;
@@ -97,7 +106,7 @@ function TrendBadge({ trend, value }: { trend: "up" | "down" | "same"; value: nu
 
 function MyRankCard({ stats }: { stats: LeaderboardEntry }) {
   return (
-    <div className="bg-card border border-border rounded-2xl p-5">
+    <Card className="rounded-2xl p-5 gap-0 py-0">
       <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">Your Ranking</p>
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
         <div className="flex items-center gap-4">
@@ -141,11 +150,11 @@ function MyRankCard({ stats }: { stats: LeaderboardEntry }) {
           )}
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
-// ─── MAIN ─────────────────────────────────────────────────────────────────────
+//  MAIN 
 
 export default function Leaderboard() {
   const { user } = useUser();
@@ -165,12 +174,15 @@ export default function Leaderboard() {
   return (
     <div className="min-h-screen bg-background text-foreground">
 
-      {/* ── Navbar ──────────────────────────────────────────────────────── */}
+      {/*  Navbar  */}
       <Header/>
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#18181b_1px,transparent_1px),linear-gradient(to_bottom,#18181b_1px,transparent_1px)] bg-[size:64px_64px] opacity-40" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(16,185,129,0.08),transparent)]" />
+      </div>
+      <main className="relative z-10 max-w-4xl mx-auto px-6 py-10 space-y-8">
 
-      <main className="max-w-4xl mx-auto px-6 py-10 space-y-8">
-
-        {/* ── Page Title ───────────────────────────────────────────────── */}
+        {/*  Page Title  */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-black tracking-tight text-foreground">Leaderboard</h1>
@@ -179,32 +191,36 @@ export default function Leaderboard() {
           <Trophy className="h-8 w-8 text-amber-400" />
         </div>
 
-        {/* ── Platform Stats ───────────────────────────────────────────── */}
+        {/*  Platform Stats  */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-card border border-border rounded-2xl p-4 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
-              <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <p className="text-lg font-black text-foreground tabular-nums">{PLATFORM_STATS.totalPlayers.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground">Total Players</p>
-            </div>
-          </div>
-          <div className="bg-card border border-border rounded-2xl p-4 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
-              <Zap className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <div>
-              <p className="text-lg font-black text-foreground tabular-nums">{PLATFORM_STATS.battlesThisWeek.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground">Battles This Week</p>
-            </div>
-          </div>
+          <Card className="rounded-2xl p-4 gap-0 py-0">
+            <CardContent className="p-0 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+                <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-lg font-black text-foreground tabular-nums">{PLATFORM_STATS.totalPlayers.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">Total Players</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="rounded-2xl p-4 gap-0 py-0">
+            <CardContent className="p-0 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+                <Zap className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <p className="text-lg font-black text-foreground tabular-nums">{PLATFORM_STATS.battlesThisWeek.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">Battles This Week</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* ── My Rank ──────────────────────────────────────────────────── */}
+        {/*  My Rank  */}
         <MyRankCard stats={myStats} />
 
-        {/* ── Filter tabs ──────────────────────────────────────────────── */}
+        {/*  Filter tabs  */}
         <div className="flex items-center gap-1 p-1 bg-muted rounded-xl w-fit">
           {(["all", "month", "week"] as TimeFilter[]).map((f) => (
             <button
@@ -222,7 +238,7 @@ export default function Leaderboard() {
           ))}
         </div>
 
-        {/* ── Podium Top 3 ─────────────────────────────────────────────── */}
+        {/*  Podium Top 3  */}
         <div className="grid grid-cols-3 gap-3">
           {/* 2nd place */}
           <div className="flex flex-col items-center gap-3 pt-6">
@@ -267,79 +283,89 @@ export default function Leaderboard() {
           </div>
         </div>
 
-        {/* ── Full Table (rank 4–10) ────────────────────────────────────── */}
-        <div className="bg-card border border-border rounded-2xl overflow-hidden">
-          {/* Table header */}
-          <div className="hidden md:grid grid-cols-12 gap-4 px-5 py-3 border-b border-border bg-muted/40">
-            <div className="col-span-1 text-xs font-bold text-muted-foreground uppercase tracking-wider text-center">Rank</div>
-            <div className="col-span-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">Player</div>
-            <div className="col-span-2 text-xs font-bold text-muted-foreground uppercase tracking-wider text-center">Score</div>
-            <div className="col-span-2 text-xs font-bold text-muted-foreground uppercase tracking-wider text-center">Win Rate</div>
-            <div className="col-span-2 text-xs font-bold text-muted-foreground uppercase tracking-wider text-center">Battles</div>
-            <div className="col-span-1 text-xs font-bold text-muted-foreground uppercase tracking-wider text-center">±</div>
-          </div>
+        {/*  Full Table (rank 4–10)  */}
+        <Card className="rounded-2xl overflow-hidden gap-0 py-0">
+          <Table>
+            <TableHeader className="hidden md:table-header-group border-b border-border bg-muted/40">
+              <TableRow className="hover:bg-transparent border-b border-border">
+                <TableHead className="w-[10%] px-5 py-3 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">Rank</TableHead>
+                <TableHead className="w-[33%] px-5 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider">Player</TableHead>
+                <TableHead className="w-[17%] px-5 py-3 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">Score</TableHead>
+                <TableHead className="w-[17%] px-5 py-3 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">Win Rate</TableHead>
+                <TableHead className="w-[17%] px-5 py-3 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">Battles</TableHead>
+                <TableHead className="w-[6%] px-5 py-3 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">+/-</TableHead>
+              </TableRow>
+            </TableHeader>
 
-          <div className="divide-y divide-border/50">
-            {rest.map((entry) => (
-              <div
-                key={entry.username}
-                className={cn(
-                  "grid grid-cols-12 gap-4 px-5 py-3.5 items-center hover:bg-muted/30 transition-colors",
-                  getRankRowStyle(entry.rank)
-                )}
-              >
-                {/* Rank */}
-                <div className="col-span-2 md:col-span-1 flex items-center justify-center">
-                  {getRankDisplay(entry.rank)}
-                </div>
+            <TableBody>
+              {rest.map((entry) => (
+                <TableRow
+                  key={entry.username}
+                  className={cn(
+                    "hover:bg-muted/30 transition-colors",
+                    getRankRowStyle(entry.rank)
+                  )}
+                >
+                  <TableCell className="px-5 py-3.5 align-middle">
+                    <div className="md:hidden flex items-center justify-center">
+                      {getRankDisplay(entry.rank)}
+                    </div>
+                    <div className="hidden md:flex items-center justify-center">
+                      {getRankDisplay(entry.rank)}
+                    </div>
+                  </TableCell>
 
-                {/* Player */}
-                <div className="col-span-6 md:col-span-4 flex items-center gap-3 min-w-0">
-                  <Avatar username={entry.username} />
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">{entry.username}</p>
-                    {entry.streak > 0 && (
-                      <p className="text-xs text-orange-500 flex items-center gap-0.5 font-medium">
-                        <Flame className="h-3 w-3" />{entry.streak} streak
-                      </p>
-                    )}
-                  </div>
-                </div>
+                  <TableCell className="px-5 py-3.5 align-middle">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Avatar username={entry.username} />
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate">{entry.username}</p>
+                        {entry.streak > 0 && (
+                          <p className="text-xs text-orange-500 flex items-center gap-0.5 font-medium">
+                            <Flame className="h-3 w-3" />{entry.streak} streak
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </TableCell>
 
-                {/* Score */}
-                <div className="col-span-4 md:col-span-2 text-center">
-                  <p className="text-sm font-black font-mono text-foreground tabular-nums">{entry.score.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground md:hidden">pts</p>
-                </div>
+                  <TableCell className="px-5 py-3.5 align-middle text-center">
+                    <p className="text-sm font-black font-mono text-foreground tabular-nums">{entry.score.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground md:hidden">pts</p>
+                  </TableCell>
 
-                {/* Win Rate */}
-                <div className="hidden md:flex md:col-span-2 flex-col items-center gap-1">
-                  <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{entry.winRate}%</p>
-                  <div className="w-14 h-1 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-emerald-500 rounded-full"
-                      style={{ width: `${entry.winRate}%` }}
-                    />
-                  </div>
-                </div>
+                  <TableCell className="hidden md:table-cell px-5 py-3.5 align-middle">
+                    <div className="flex flex-col items-center gap-1">
+                      <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{entry.winRate}%</p>
+                      <div className="w-14 h-1 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-emerald-500 rounded-full"
+                          style={{ width: `${entry.winRate}%` }}
+                        />
+                      </div>
+                    </div>
+                  </TableCell>
 
-                {/* Battles */}
-                <div className="hidden md:flex md:col-span-2 items-center justify-center gap-1.5 text-sm">
-                  <Swords className="h-3.5 w-3.5 text-muted-foreground/60" />
-                  <span className="font-bold text-foreground tabular-nums">{entry.battlesWon}</span>
-                  <span className="text-muted-foreground">/ {entry.totalBattles}</span>
-                </div>
+                  <TableCell className="hidden md:table-cell px-5 py-3.5 align-middle">
+                    <div className="flex items-center justify-center gap-1.5 text-sm">
+                      <Swords className="h-3.5 w-3.5 text-muted-foreground/60" />
+                      <span className="font-bold text-foreground tabular-nums">{entry.battlesWon}</span>
+                      <span className="text-muted-foreground">/ {entry.totalBattles}</span>
+                    </div>
+                  </TableCell>
 
-                {/* Trend */}
-                <div className="hidden md:flex md:col-span-1 items-center justify-center">
-                  <TrendBadge trend={entry.trend} value={entry.trendValue} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+                  <TableCell className="hidden md:table-cell px-5 py-3.5 align-middle">
+                    <div className="flex items-center justify-center">
+                      <TrendBadge trend={entry.trend} value={entry.trendValue} />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
 
-        {/* ── Footer note ──────────────────────────────────────────────── */}
+        {/*  Footer note  */}
         <p className="text-center text-xs text-muted-foreground pb-4">
           Rankings update every 30 minutes · Showing top 10 of {PLATFORM_STATS.totalPlayers.toLocaleString()} players
         </p>

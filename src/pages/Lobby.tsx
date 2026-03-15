@@ -2,6 +2,7 @@ import { Swords, Plus, LogIn, Clock, Trophy, ShieldAlert, Zap } from "lucide-rea
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Header } from "@/components/Header";
 import { CreateJoinRoom } from "@/components/CreateJoinRoom";
+import { Badge } from "@/components/ui/badge";
 
 const CREATE_RULES = [
   { icon: Zap,         text: "A unique 6-character room code is generated instantly" },
@@ -21,11 +22,15 @@ export default function BattleRoom() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header />
-
-      <main className="max-w-4xl mx-auto px-6 py-10 space-y-8">
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#18181b_1px,transparent_1px),linear-gradient(to_bottom,#18181b_1px,transparent_1px)] bg-[size:64px_64px] opacity-40" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(16,185,129,0.08),transparent)]" />
+      </div>
+      <main className="relative z-10 max-w-4xl mx-auto px-6 py-10 space-y-8">
 
         {/* Page header */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
             <Swords className="h-5 w-5 text-emerald-500" />
           </div>
@@ -33,12 +38,18 @@ export default function BattleRoom() {
             <h1 className="text-2xl font-black tracking-tight">Battle Room</h1>
             <p className="text-sm text-muted-foreground">Create or join a 1v1 coding battle</p>
           </div>
+          </div>
+          <Badge variant="outline" className="text-[10px] font-semibold gap-1.5 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/8 px-2.5 py-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            Matches live
+          </Badge>
         </div>
 
         {/* Create + Join component */}
         <Card className="rounded-2xl">
           <CardHeader className="px-6 pt-6 pb-4">
             <CardTitle className="text-sm font-bold">Start a Battle</CardTitle>
+            
           </CardHeader>
           <CardContent className="px-6 pb-6 pt-0">
             <CreateJoinRoom />

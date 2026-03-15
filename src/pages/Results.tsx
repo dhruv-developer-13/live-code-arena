@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  Trophy, RefreshCw, Plus, Share2, Code2,
+  Trophy, Plus, Share2, Code2,
   CheckCircle2, XCircle, Clock, Swords, Home,
 } from "lucide-react";
 import { Header } from "@/components/Header";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -95,18 +96,22 @@ export default function Results() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header />
-
-      <main className="max-w-4xl mx-auto px-6 py-10 space-y-6">
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#18181b_1px,transparent_1px),linear-gradient(to_bottom,#18181b_1px,transparent_1px)] bg-[size:64px_64px] opacity-40" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(16,185,129,0.08),transparent)]" />
+      </div>
+      <main className="relative z-10 max-w-4xl mx-auto px-6 py-10 space-y-6">
 
         {/* ── Winner Banner ──────────────────────────────────────────── */}
-        <div className={cn(
+        <Card className={cn(
           "relative overflow-hidden rounded-2xl p-10 text-center border",
           isWinner
             ? "bg-emerald-500/5 border-emerald-500/25"
             : isTie
             ? "bg-amber-500/5 border-amber-500/25"
             : "bg-rose-500/5 border-rose-500/25",
-        )}>
+        ) + " gap-0 py-0"}>
+          <CardContent className="p-0">
           {/* Confetti */}
           {confettiPieces.map((p) => (
             <div
@@ -180,7 +185,8 @@ export default function Results() {
               Room: {roomCode}
             </p>
           )}
-        </div>
+          </CardContent>
+        </Card>
 
         {/* ── Summary stat row ───────────────────────────────────────── */}
         <div className="grid grid-cols-3 gap-3">
@@ -230,14 +236,14 @@ export default function Results() {
                     <div className="flex items-start justify-between mb-4 gap-4">
                       <div>
                         <p className="text-sm font-semibold text-foreground">{result.title}</p>
-                        <span className={cn(
-                          "inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-bold",
+                        <Badge className={cn(
+                          "inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-bold border-0 shadow-none",
                           result.difficulty === "Easy"   && "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
                           result.difficulty === "Medium" && "bg-amber-500/15 text-amber-600 dark:text-amber-400",
                           result.difficulty === "Hard"   && "bg-rose-500/15 text-rose-600 dark:text-rose-400",
                         )}>
                           {result.difficulty}
-                        </span>
+                        </Badge>
                       </div>
                       <div className="text-right shrink-0">
                         <p className="text-xl font-black font-mono">
