@@ -5,17 +5,14 @@ import BattleArena from "./pages/Arena";
 import HomePage from "./pages/DashBoard";
 import LeaderboardPage from "./pages/Leaderboard";
 import WaitingRoom from "./pages/Waitingroom";
-import {
-  AuthenticateWithRedirectCallback,
-  useAuth 
-} from "@clerk/react";
+import { useAuth } from "@clerk/react";
 import BattleRoom from "./pages/Lobby";
 import BattleHistory from "./pages/History";
 import Results from "./pages/Results";
 import LandingPage from "./pages/LandingPage";
 import SignInPage from "./auth/SignInPage";
 import SignUpPage from "./auth/SignUpPage";
-
+import SSOCallback from "./auth/SSOCallBack";
 
 
 const ProtectedRoute = ({ children }: { children: ReactNode }) => {
@@ -40,12 +37,12 @@ const SignedOutOnlyRoute = ({ children }: { children: ReactNode }) => {
 
 export default function App() {
   return (
-    <BrowserRouter>
+      <>
       <Toaster richColors position="top-right" />
       <Routes>
         <Route path="/sign-in/*" element={<SignedOutOnlyRoute><SignInPage /></SignedOutOnlyRoute>} />
         <Route path="/sign-up/*" element={<SignedOutOnlyRoute><SignUpPage /></SignedOutOnlyRoute>} />
-        <Route path="/sso-callback" element={<AuthenticateWithRedirectCallback />} />
+        <Route path="/sso-callback" element={<SSOCallback />} />
         <Route path="/landing" element={<SignedOutOnlyRoute><LandingPage /></SignedOutOnlyRoute>} />
         <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
         <Route path="/leaderboard" element={<ProtectedRoute><LeaderboardPage /></ProtectedRoute>} />
@@ -56,6 +53,6 @@ export default function App() {
         <Route path="/results/:roomCode" element={<ProtectedRoute><Results /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </BrowserRouter>
+      </>
   )
 }

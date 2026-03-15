@@ -1,41 +1,51 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
-import { useSignIn } from "@clerk/react";
+import { useClerk } from "@clerk/react";
+import { useSignIn } from "@clerk/react/legacy";
 import { Swords, Eye, EyeOff, ArrowRight, Github } from "lucide-react";
 
 export default function SignIn() {
   const { signIn, isLoaded } = useSignIn();
+const { setActive } = useClerk();
   const navigate = useNavigate();
 
-  const [email, setEmail]       = useState("");
-  const [password, setPassword] = useState("");
-  const [showPass, setShowPass] = useState(false);
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState("");
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword]     = useState("");
+  const [showPass, setShowPass]     = useState(false);
+  const [loading, setLoading]       = useState(false);
+  const [error, setError]           = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isLoaded) return;
+    if (!isLoaded || !signIn) return;
     setLoading(true);
     setError("");
     try {
-      const result = await signIn.create({ identifier: email, password });
-      if (result.status === "complete") navigate("/");
+      const result = await signIn.create({ identifier, password });
+      if (result.status === "complete") {
+        await setActive({ session: result.createdSessionId });
+        navigate("/");
+      }
     } catch (err: any) {
-      setError(err.errors?.[0]?.message ?? "Invalid credentials.");
+      setError(err.errors?.[0]?.longMessage ?? err.errors?.[0]?.message ?? "Invalid credentials.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleOAuth = async (strategy: "oauth_github" | "oauth_google") => {
-    if (!isLoaded) return;
-    await signIn.authenticateWithRedirect({
-      strategy,
-      redirectUrl: "/sso-callback",
-      redirectUrlComplete: "/",
-    });
+    if (!isLoaded || !signIn) return;
+    setError("");
+    try {
+      await signIn.authenticateWithRedirect({
+        strategy,
+        redirectUrl: "/sso-callback",
+        redirectUrlComplete: "/",
+      });
+    } catch (err: any) {
+      setError(err.errors?.[0]?.longMessage ?? err.errors?.[0]?.message ?? "OAuth sign-in failed.");
+    }
   };
 
   return (
@@ -43,7 +53,6 @@ export default function SignIn() {
       className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center px-4"
       style={{ fontFamily: "'Figtree', sans-serif" }}
     >
-      {/* Grid bg */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#18181b_1px,transparent_1px),linear-gradient(to_bottom,#18181b_1px,transparent_1px)] bg-[size:64px_64px] opacity-30" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_0%,rgba(16,185,129,0.07),transparent)]" />
@@ -55,9 +64,8 @@ export default function SignIn() {
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         className="relative z-10 w-full max-w-sm"
       >
-        {/* Logo */}
         <Link
-          to="/"
+          to="/landing"
           className="flex items-center justify-center gap-2 mb-8"
           style={{ fontFamily: "'Syne', sans-serif" }}
         >
@@ -69,7 +77,6 @@ export default function SignIn() {
           </span>
         </Link>
 
-        {/* Card */}
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-8">
           <h1
             className="text-2xl font-bold tracking-tight mb-1"
@@ -87,6 +94,7 @@ export default function SignIn() {
           {/* OAuth */}
           <div className="grid grid-cols-2 gap-2 mb-5">
             <button
+              type="button"
               onClick={() => handleOAuth("oauth_github")}
               className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-sm font-medium text-zinc-300 transition-colors"
             >
@@ -94,6 +102,7 @@ export default function SignIn() {
               GitHub
             </button>
             <button
+              type="button"
               onClick={() => handleOAuth("oauth_google")}
               className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-sm font-medium text-zinc-300 transition-colors"
             >
@@ -115,12 +124,14 @@ export default function SignIn() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-zinc-400 mb-1.5">Email</label>
+              <label className="block text-xs font-semibold text-zinc-400 mb-1.5">
+                Username or Email
+              </label>
               <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                type="text"
+                value={identifier}
+                onChange={e => setIdentifier(e.target.value)}
+                placeholder="your_handle or you@example.com"
                 required
                 className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-700 bg-zinc-950 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
               />
