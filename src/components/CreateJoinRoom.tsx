@@ -54,12 +54,13 @@ export function CreateJoinRoom() {
             value={roomInput}
             onChange={(e) => setRoomInput(e.target.value.toUpperCase())}
             placeholder="ROOM CODE"
-            maxLength={8}
+            minLength={6}
+            maxLength={6}
             className="flex-1 bg-muted border border-border rounded-lg px-3 py-2 text-sm font-mono font-semibold tracking-widest placeholder:text-muted-foreground/50 placeholder:font-normal placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-blue-500/30 text-foreground"
           />
           <button
             onClick={joinRoom}
-            disabled={roomInput.length < 4}
+            disabled={roomInput.length < 6}
             className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors"
           >
             Join

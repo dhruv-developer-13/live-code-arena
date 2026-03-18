@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { Toaster } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
 import BattleArena from "./pages/Arena";
 import HomePage from "./pages/DashBoard";
 import LeaderboardPage from "./pages/Leaderboard";

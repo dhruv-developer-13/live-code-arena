@@ -8,6 +8,7 @@ import {
   Target, BarChart3, Zap,
 } from "lucide-react";
 import { Header } from "@/components/Header";
+import { PageBackground } from "@/components/PageBackground";
 import { cn } from "@/lib/utils";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
@@ -191,15 +192,11 @@ export default function Results() {
       <Header />
 
       {/* Background */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#18181b_1px,transparent_1px),linear-gradient(to_bottom,#18181b_1px,transparent_1px)] bg-[size:64px_64px] opacity-30" />
-        <div className={cn(
-          "absolute inset-0",
-          isWinner ? "bg-[radial-gradient(ellipse_60%_40%_at_50%_0%,rgba(16,185,129,0.07),transparent)]"
-          : isTie   ? "bg-[radial-gradient(ellipse_60%_40%_at_50%_0%,rgba(245,158,11,0.07),transparent)]"
-          :            "bg-[radial-gradient(ellipse_60%_40%_at_50%_0%,rgba(239,68,68,0.07),transparent)]"
-        )} />
-      </div>
+      <PageBackground
+        gridOpacityClass="opacity-30"
+        glowSize="compact"
+        glowTone={isWinner ? "emerald" : isTie ? "amber" : "rose"}
+      />
 
       <main className="relative z-10 max-w-7xl mx-auto px-6 py-8 space-y-6">
 

@@ -1,10 +1,9 @@
-import { Trophy, Clock, Swords, ChevronRight, CheckCircle2, XCircle, SlidersHorizontal, TrendingUp, Target } from "lucide-react";
+import { Clock, Swords, ChevronRight, SlidersHorizontal, TrendingUp } from "lucide-react";
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { Card, CardContent } from "@/components/ui/card";
 import { Header } from "@/components/Header";
 import { cn } from "@/lib/utils";
+import { PageBackground } from "@/components/PageBackground";
 
 // ─── MOCK DATA ────────────────────────────────────────────────────────────────
 // TODO: fetch from /api/battles?userId=...
@@ -179,10 +178,7 @@ export default function History() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header />
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#18181b_1px,transparent_1px),linear-gradient(to_bottom,#18181b_1px,transparent_1px)] bg-[size:64px_64px] opacity-40" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(16,185,129,0.08),transparent)]" />
-      </div>
+      <PageBackground />
 
       <main className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-7">
 

@@ -28,8 +28,12 @@ export default function SignUp() {
       await signUp.create({ username, emailAddress: email, password });
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       setStep("verify");
-    } catch (err: any) {
-      setError(err.errors?.[0]?.longMessage ?? err.errors?.[0]?.message ?? "Something went wrong.");
+    } catch (err: unknown) {
+      const firstError =
+        typeof err === "object" && err !== null && "errors" in err && Array.isArray((err as { errors?: unknown[] }).errors)
+          ? (err as { errors: Array<{ longMessage?: string; message?: string }> }).errors[0]
+          : undefined;
+      setError(firstError?.longMessage ?? firstError?.message ?? "Something went wrong.");
     } finally {
       setLoading(false);
     }
@@ -46,8 +50,12 @@ export default function SignUp() {
         await setActive({ session: result.createdSessionId });
         navigate("/");
       }
-    } catch (err: any) {
-      setError(err.errors?.[0]?.longMessage ?? err.errors?.[0]?.message ?? "Invalid code.");
+    } catch (err: unknown) {
+      const firstError =
+        typeof err === "object" && err !== null && "errors" in err && Array.isArray((err as { errors?: unknown[] }).errors)
+          ? (err as { errors: Array<{ longMessage?: string; message?: string }> }).errors[0]
+          : undefined;
+      setError(firstError?.longMessage ?? firstError?.message ?? "Invalid code.");
     } finally {
       setLoading(false);
     }
@@ -62,8 +70,12 @@ export default function SignUp() {
         redirectUrl: "/sso-callback",
         redirectUrlComplete: "/",
       });
-    } catch (err: any) {
-      setError(err.errors?.[0]?.longMessage ?? err.errors?.[0]?.message ?? "OAuth sign-up failed.");
+    } catch (err: unknown) {
+      const firstError =
+        typeof err === "object" && err !== null && "errors" in err && Array.isArray((err as { errors?: unknown[] }).errors)
+          ? (err as { errors: Array<{ longMessage?: string; message?: string }> }).errors[0]
+          : undefined;
+      setError(firstError?.longMessage ?? firstError?.message ?? "OAuth sign-up failed.");
     }
   };
 

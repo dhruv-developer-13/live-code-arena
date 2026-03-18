@@ -5,6 +5,7 @@ import {
   Github, Twitter, Star, ArrowRight, Play, Check, Users,
   Target, TrendingUp, Lock, Globe, Terminal, Cpu
 } from "lucide-react";
+import { PageBackground } from "@/components/PageBackground";
 
 //  ANIMATED BATTLE PREVIEW 
 
@@ -204,10 +205,7 @@ export default function LandingPage() {
       style={{ fontFamily: "'Figtree', sans-serif" }}
     >
       {/*  Grid noise background  */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#18181b_1px,transparent_1px),linear-gradient(to_bottom,#18181b_1px,transparent_1px)] bg-[size:64px_64px] opacity-40" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(16,185,129,0.08),transparent)]" />
-      </div>
+      <PageBackground />
 
       {/*  NAV  */}
       <motion.nav
@@ -225,7 +223,7 @@ export default function LandingPage() {
           </span>
         </div>
         <div className="hidden md:flex items-center gap-8 text-sm text-zinc-400">
-          {["Features", "How it Works", "Leaderboard", "Pricing"].map(l => (
+          {["Features", "How it Works", "Interface", "Why CodeArena"].map(l => (
             <a key={l} href={`#${l.toLowerCase().replace(/ /g, "-")}`} className="hover:text-zinc-100 transition-colors">{l}</a>
           ))}
         </div>
@@ -407,7 +405,7 @@ export default function LandingPage() {
       </section>
 
       {/*  PRODUCT SHOWCASE  */}
-      <section className="relative z-10 py-24 px-6 md:px-12 max-w-7xl mx-auto">
+      <section id="interface" className="relative z-10 py-24 px-6 md:px-12 max-w-7xl mx-auto">
         <Reveal className="text-center mb-16">
           <p className="text-xs font-semibold tracking-[0.2em] text-emerald-400 uppercase mb-4">Interface</p>
           <h2 className="text-4xl md:text-5xl font-bold tracking-tight" style={{ fontFamily: "'Syne', sans-serif" }}>
@@ -471,7 +469,7 @@ export default function LandingPage() {
       </section>
 
       {/*  BENEFITS  */}
-      <section className="relative z-10 py-24 px-6 md:px-12 border-y border-zinc-800/40 bg-zinc-900/20">
+      <section id="why-codearena" className="relative z-10 py-24 px-6 md:px-12 border-y border-zinc-800/40 bg-zinc-900/20">
         <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-16 items-center">
           <Reveal>
             <p className="text-xs font-semibold tracking-[0.2em] text-emerald-400 uppercase mb-4">Why CodeArena</p>

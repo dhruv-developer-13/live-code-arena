@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Clock, Play, Send,
   CheckCircle2, XCircle, Circle, AlertTriangle,
-  LogOut, Trophy, Zap, Sun, Moon,
+  LogOut, Trophy, Zap,
   Maximize, ShieldAlert, ShieldX,
 } from "lucide-react";
 import { cn } from "../lib/utils";
@@ -14,6 +14,7 @@ import {
 import problemsData from "../data/problems.json";
 import { runBatch, judgeResults, type JudgedResult } from "../lib/executor";
 import { io, Socket } from "socket.io-client";
+import { ThemeToggleButton } from "@/components/ThemeToggleButton";
 
 interface Example { input: string; output: string; explanation?: string; }
 interface TestCase { input: string; expected: string; }
@@ -64,9 +65,6 @@ export default function BattleArena() {
   const [searchParams] = useSearchParams();
   const username = searchParams.get("username") ?? "player1";
 
-  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains("dark"));
-  const toggleTheme = () => { document.documentElement.classList.toggle("dark"); setIsDark((p) => !p); };
-
   const [problems, setProblems]     = useState<Problem[]>([]);
   const [loading, setLoading]       = useState(true);
   const [loadError, setLoadError]   = useState<string | null>(null);
@@ -75,7 +73,9 @@ export default function BattleArena() {
   // Per-problem code storage
   const [codes, setCodes] = useState<Record<number, string>>({ 0: PYTHON_STUB, 1: PYTHON_STUB, 2: PYTHON_STUB });
   const code    = codes[selectedProblem] ?? PYTHON_STUB;
-  const setCode = (val: string) => setCodes((prev) => ({ ...prev, [selectedProblem]: val }));
+  const setCode = useCallback((val: string) => {
+    setCodes((prev) => ({ ...prev, [selectedProblem]: val }));
+  }, [selectedProblem]);
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const codeRef   = useRef(code);
   useEffect(() => { codeRef.current = code; }, [code]);
@@ -112,8 +112,9 @@ export default function BattleArena() {
       }
       setIsFullscreen(true);
       setShowFullscreenPrompt(false);
-    } catch (_) {
-      toast.error("Could not enter fullscreen", { description: "Please allow fullscreen in your browser." });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Please allow fullscreen in your browser.";
+      toast.error("Could not enter fullscreen", { description: message });
     }
   }, []);
 
@@ -190,6 +191,9 @@ export default function BattleArena() {
     }
   }, [navigate, roomCode, deductPoints]);
 
+  // Retained for quick re-enable of anti-cheat listeners in testing mode.
+  void recordViolation;
+
   // ── TESTING MODE: fullscreen enforcement disabled ────────────────────────
   // useEffect(() => {
   //   const onFsChange = () => {
@@ -245,7 +249,7 @@ export default function BattleArena() {
   //   e.preventDefault();
   //   recordViolation("Copy/paste attempt detected.");
   // }, [recordViolation]);
-  const blockClipboard = useCallback((_e: React.ClipboardEvent) => {
+  const blockClipboard = useCallback((/*_e: React.ClipboardEvent */) => {
     // disabled for testing
   }, []);
 
@@ -269,7 +273,7 @@ export default function BattleArena() {
     //   e.preventDefault();
     //   recordViolation("Copy/paste attempt detected.");
     // }
-  }, []);
+  }, [setCode]);
 
   const handleSubmit = useCallback(async () => {
     if (!problems[selectedProblem]) return;
@@ -310,8 +314,9 @@ export default function BattleArena() {
       } else {
         toast.error("✗ Wrong Answer", { description: `0/${total} test cases passed.` });
       }
-    } catch (err: any) {
-      toast.error("Submit error", { description: err.message });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      toast.error("Submit error", { description: message });
     } finally {
       setSubmitting(false);
     }
@@ -369,8 +374,9 @@ export default function BattleArena() {
 
       setTestResults(results);
       toast(`Executed — ${results.length} test case${results.length !== 1 ? "s" : ""} run`);
-    } catch (err: any) {
-      toast.error("Execution error", { description: err.message });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      toast.error("Execution error", { description: message });
     } finally {
       setRunning(false);
     }
@@ -498,9 +504,7 @@ export default function BattleArena() {
                 <Maximize className="h-4 w-4" />
               </button>
             )}
-            <button onClick={toggleTheme} className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground" aria-label="Toggle theme">
-              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </button>
+            <ThemeToggleButton />
             <button onClick={() => setShowLeaveDialog(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-600 dark:text-emerald-400 text-sm font-semibold transition-colors border border-emerald-500/20">
               <LogOut className="h-4 w-4" />
               Submit & Leave

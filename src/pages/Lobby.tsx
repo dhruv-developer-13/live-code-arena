@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Header } from "@/components/Header";
 import { CreateJoinRoom } from "@/components/CreateJoinRoom";
 import { Badge } from "@/components/ui/badge";
+import { PageBackground } from "@/components/PageBackground";
 
 const CREATE_RULES = [
   { icon: Zap,         text: "A unique 6-character room code is generated instantly" },
@@ -22,10 +23,7 @@ export default function BattleRoom() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header />
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#18181b_1px,transparent_1px),linear-gradient(to_bottom,#18181b_1px,transparent_1px)] bg-[size:64px_64px] opacity-40" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(16,185,129,0.08),transparent)]" />
-      </div>
+      <PageBackground />
       <main className="relative z-10 max-w-4xl mx-auto px-6 py-10 space-y-8">
 
         {/* Page header */}

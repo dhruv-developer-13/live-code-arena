@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { useUser } from "@clerk/react";
 import { useNavigate } from "react-router-dom";
+import { PageBackground } from "@/components/PageBackground";
 
 //  MOCK DATA 
 
@@ -117,7 +118,6 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   const userName    = user?.fullName || user?.username || "Player";
-  const userHandle  = user?.username || "unknown";
   const userAvatar  = user?.imageUrl || null;
   const userInitial = userName[0]?.toUpperCase() ?? "P";
 
@@ -130,10 +130,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header />
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#18181b_1px,transparent_1px),linear-gradient(to_bottom,#18181b_1px,transparent_1px)] bg-[size:64px_64px] opacity-40" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(16,185,129,0.08),transparent)]" />
-      </div>
+      <PageBackground />
 
       <main className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
 

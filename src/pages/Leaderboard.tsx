@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Header } from "@/components/Header";
 import { useUser } from "@clerk/react";
 import { Card, CardContent } from "@/components/ui/card";
+import { PageBackground } from "@/components/PageBackground";
 import {
   Table,
   TableBody,
@@ -106,9 +107,9 @@ function TrendBadge({ trend, value }: { trend: "up" | "down" | "same"; value: nu
 
 function MyRankCard({ stats }: { stats: LeaderboardEntry }) {
   return (
-    <Card className="rounded-2xl p-5 gap-0 py-0">
-      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">Your Ranking</p>
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+    <Card className="rounded-2xl p-5 sm:p-6 gap-0 py-0">
+      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-5">Your Ranking</p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
           <div className="relative">
             <Avatar username={stats.username} size="lg" />
@@ -127,7 +128,7 @@ function MyRankCard({ stats }: { stats: LeaderboardEntry }) {
           </div>
         </div>
 
-        <div className="flex items-center gap-6 sm:gap-8">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-4 w-full sm:w-auto sm:flex sm:items-center sm:gap-8">
           <div className="text-center">
             <p className="text-xl font-black font-mono text-foreground tabular-nums">{stats.score.toLocaleString()}</p>
             <p className="text-xs text-muted-foreground mt-0.5">points</p>
@@ -176,24 +177,21 @@ export default function Leaderboard() {
 
       {/*  Navbar  */}
       <Header/>
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#18181b_1px,transparent_1px),linear-gradient(to_bottom,#18181b_1px,transparent_1px)] bg-[size:64px_64px] opacity-40" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(16,185,129,0.08),transparent)]" />
-      </div>
-      <main className="relative z-10 max-w-4xl mx-auto px-6 py-10 space-y-8">
+      <PageBackground />
+      <main className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-10">
 
         {/*  Page Title  */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-black tracking-tight text-foreground">Leaderboard</h1>
             <p className="text-sm text-muted-foreground mt-1">Top coders ranked by total points</p>
           </div>
-          <Trophy className="h-8 w-8 text-amber-400" />
+          <Trophy className="h-8 w-8 text-amber-400 self-start sm:self-auto" />
         </div>
 
         {/*  Platform Stats  */}
-        <div className="grid grid-cols-2 gap-3">
-          <Card className="rounded-2xl p-4 gap-0 py-0">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Card className="rounded-2xl px-5 py-4 sm:px-6 sm:py-5 gap-0">
             <CardContent className="p-0 flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
                 <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -204,7 +202,7 @@ export default function Leaderboard() {
               </div>
             </CardContent>
           </Card>
-          <Card className="rounded-2xl p-4 gap-0 py-0">
+          <Card className="rounded-2xl px-5 py-4 sm:px-6 sm:py-5 gap-0">
             <CardContent className="p-0 flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
                 <Zap className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
@@ -221,7 +219,7 @@ export default function Leaderboard() {
         <MyRankCard stats={myStats} />
 
         {/*  Filter tabs  */}
-        <div className="flex items-center gap-1 p-1 bg-muted rounded-xl w-fit">
+        <div className="flex flex-wrap items-center gap-1 p-1 bg-muted rounded-xl w-fit">
           {(["all", "month", "week"] as TimeFilter[]).map((f) => (
             <button
               key={f}
@@ -239,9 +237,9 @@ export default function Leaderboard() {
         </div>
 
         {/*  Podium Top 3  */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-3">
           {/* 2nd place */}
-          <div className="flex flex-col items-center gap-3 pt-6">
+          <div className="flex flex-col items-center gap-3 pt-0 sm:pt-6">
             <Avatar username={topThree[1].username} size="md" />
             <div className="text-center">
               <p className="text-sm font-bold text-foreground">{topThree[1].username}</p>
@@ -270,7 +268,7 @@ export default function Leaderboard() {
           </div>
 
           {/* 3rd place */}
-          <div className="flex flex-col items-center gap-3 pt-10">
+          <div className="flex flex-col items-center gap-3 pt-0 sm:pt-10">
             <Avatar username={topThree[2].username} size="md" />
             <div className="text-center">
               <p className="text-sm font-bold text-foreground">{topThree[2].username}</p>
@@ -306,7 +304,7 @@ export default function Leaderboard() {
                     getRankRowStyle(entry.rank)
                   )}
                 >
-                  <TableCell className="px-5 py-3.5 align-middle">
+                  <TableCell className="px-5 py-4 align-middle">
                     <div className="md:hidden flex items-center justify-center">
                       {getRankDisplay(entry.rank)}
                     </div>
@@ -315,7 +313,7 @@ export default function Leaderboard() {
                     </div>
                   </TableCell>
 
-                  <TableCell className="px-5 py-3.5 align-middle">
+                  <TableCell className="px-5 py-4 align-middle">
                     <div className="flex items-center gap-3 min-w-0">
                       <Avatar username={entry.username} />
                       <div className="min-w-0">
@@ -329,12 +327,12 @@ export default function Leaderboard() {
                     </div>
                   </TableCell>
 
-                  <TableCell className="px-5 py-3.5 align-middle text-center">
+                  <TableCell className="px-5 py-4 align-middle text-center">
                     <p className="text-sm font-black font-mono text-foreground tabular-nums">{entry.score.toLocaleString()}</p>
                     <p className="text-xs text-muted-foreground md:hidden">pts</p>
                   </TableCell>
 
-                  <TableCell className="hidden md:table-cell px-5 py-3.5 align-middle">
+                  <TableCell className="hidden md:table-cell px-5 py-4 align-middle">
                     <div className="flex flex-col items-center gap-1">
                       <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{entry.winRate}%</p>
                       <div className="w-14 h-1 bg-muted rounded-full overflow-hidden">
@@ -346,7 +344,7 @@ export default function Leaderboard() {
                     </div>
                   </TableCell>
 
-                  <TableCell className="hidden md:table-cell px-5 py-3.5 align-middle">
+                  <TableCell className="hidden md:table-cell px-5 py-4 align-middle">
                     <div className="flex items-center justify-center gap-1.5 text-sm">
                       <Swords className="h-3.5 w-3.5 text-muted-foreground/60" />
                       <span className="font-bold text-foreground tabular-nums">{entry.battlesWon}</span>
@@ -354,7 +352,7 @@ export default function Leaderboard() {
                     </div>
                   </TableCell>
 
-                  <TableCell className="hidden md:table-cell px-5 py-3.5 align-middle">
+                  <TableCell className="hidden md:table-cell px-5 py-4 align-middle">
                     <div className="flex items-center justify-center">
                       <TrendBadge trend={entry.trend} value={entry.trendValue} />
                     </div>

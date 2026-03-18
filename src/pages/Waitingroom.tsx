@@ -8,6 +8,7 @@ import { useUser } from "@clerk/react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { io, Socket } from "socket.io-client";
+import { PageBackground } from "@/components/PageBackground";
 
 interface Player {
   id: string;
@@ -62,14 +63,16 @@ export default function WaitingRoom() {
   const myPlayer  = players.find((p) => p.id === mySocketId);
 
   // Keep player name in sync with Clerk (host only)
-  useEffect(() => {
-    if (!isHost) return;
-    setPlayers((prev) =>
-      prev.map((p) =>
-        p.id === "1" ? { ...p, name: clerkName, username: clerkUsername } : p
-      )
-    );
-  }, [clerkName, clerkUsername, isHost]);
+  // cascading render error
+  
+  // useEffect(() => {
+  //   if (!isHost) return;
+  //   setPlayers((prev) =>
+  //     prev.map((p) =>
+  //       p.id === "1" ? { ...p, name: clerkName, username: clerkUsername } : p
+  //     )
+  //   );
+  // }, [clerkName, clerkUsername, isHost]);
 
   // ── Socket ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -160,15 +163,19 @@ export default function WaitingRoom() {
   const allReady = players.length === 2 && players.every((p) => p.isReady);
 
   // Sort so host always appears first
-  const sortedPlayers = [...players].sort((a, b) => (a.isHost ? -1 : 1));
+  const normalizedPlayers = players.map((p) =>
+    isHost && p.id === "1" ? { ...p, name: clerkName, username: clerkUsername } : p
+  );
+
+  const sortedPlayers = [...normalizedPlayers].sort((a, b) => {
+    if (a.isHost === b.isHost) return 0;
+    return a.isHost ? -1 : 1;
+  });
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header />
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#18181b_1px,transparent_1px),linear-gradient(to_bottom,#18181b_1px,transparent_1px)] bg-[size:64px_64px] opacity-40" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(16,185,129,0.08),transparent)]" />
-      </div>
+      <PageBackground />
       <main className="relative z-10 max-w-xl mx-auto px-6 py-12 space-y-6">
 
         {/*  Page Header  */}
@@ -212,20 +219,22 @@ export default function WaitingRoom() {
 
         {/*  Players  */}
         <Card className="rounded-2xl overflow-hidden gap-0 py-0">
-          <CardHeader className="flex-row items-center justify-between gap-2 px-5 py-4 border-b border-border">
-            <div className="flex items-center gap-2">
+          <CardHeader className="grid-cols-[1fr_auto] grid-rows-1 items-center gap-2 px-5 py-4 border-b border-border">
+            <div className="flex items-center gap-2 min-w-0">
               <Users className="h-4 w-4 text-muted-foreground" />
-              <CardTitle className="text-sm font-bold text-foreground">Players</CardTitle>
+              <CardTitle className="text-sm font-bold text-foreground whitespace-nowrap">Players</CardTitle>
             </div>
-            <span className="text-sm text-muted-foreground font-normal">{players.length}/2</span>
+            <span className="text-sm text-muted-foreground font-normal whitespace-nowrap">{players.length}/2</span>
           </CardHeader>
 
           <CardContent className="p-4 space-y-3">
             {sortedPlayers.map((player) => (
               <div
                 key={player.id}
+                onClick={player.id === mySocketId ? toggleReady : undefined}
                 className={cn(
                   "flex items-center justify-between p-4 rounded-xl border transition-all duration-300",
+                  player.id === mySocketId && "cursor-pointer",
                   player.isReady ? "bg-emerald-500/5 border-emerald-500/25" : "bg-muted/30 border-border"
                 )}
               >
