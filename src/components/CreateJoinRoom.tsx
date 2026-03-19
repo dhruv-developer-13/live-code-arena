@@ -30,7 +30,7 @@ export function CreateJoinRoom() {
         className="group flex items-center gap-3 p-4 rounded-xl border border-border hover:border-emerald-500/40 hover:bg-emerald-500/5 transition-all duration-200 text-left"
       >
         <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0 group-hover:bg-emerald-500/20 transition-colors">
-          <Plus className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+          <Plus className="h-5 w-5 text-success" />
         </div>
         <div>
           <p className="text-sm font-semibold text-foreground">Create Room</p>
@@ -42,7 +42,7 @@ export function CreateJoinRoom() {
       <div className="flex flex-col gap-2 p-4 rounded-xl border border-border">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
-            <LogIn className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <LogIn className="h-5 w-5 text-info" />
           </div>
           <div>
             <p className="text-sm font-semibold text-foreground">Join Room</p>

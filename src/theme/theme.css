@@ -1,0 +1,33 @@
+@layer utilities {
+  .text-success {
+    @apply text-emerald-600 dark:text-emerald-400;
+  }
+
+  .text-warning {
+    @apply text-amber-600 dark:text-amber-400;
+  }
+
+  .text-danger {
+    @apply text-rose-600 dark:text-rose-400;
+  }
+
+  .text-info {
+    @apply text-blue-600 dark:text-blue-400;
+  }
+
+  .text-brand {
+    @apply text-violet-600 dark:text-violet-400;
+  }
+
+  .text-highlight {
+    @apply text-orange-600 dark:text-orange-400;
+  }
+
+  .badge-destructive-theme {
+    @apply bg-destructive text-white focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40 [a&]:hover:bg-destructive/90;
+  }
+
+  .aria-invalid-destructive-ring[aria-invalid="true"] {
+    @apply ring-destructive/20 dark:ring-destructive/40;
+  }
+}

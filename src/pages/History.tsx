@@ -28,9 +28,9 @@ type FilterValue = "all" | "win" | "loss" | "Easy" | "Medium" | "Hard";
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 
 const DIFF_STYLES = {
-  Easy:   { badge: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20", bar: "bg-emerald-500" },
-  Medium: { badge: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",         bar: "bg-amber-500"   },
-  Hard:   { badge: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",             bar: "bg-rose-500"    },
+  Easy:   { badge: "bg-emerald-500/10 text-success border-emerald-500/20", bar: "bg-emerald-500" },
+  Medium: { badge: "bg-amber-500/10 text-warning border-amber-500/20",         bar: "bg-amber-500"   },
+  Hard:   { badge: "bg-rose-500/10 text-danger border-rose-500/20",             bar: "bg-rose-500"    },
 } as const;
 
 // ─── SUBCOMPONENTS ────────────────────────────────────────────────────────────
@@ -57,11 +57,11 @@ interface FilterPillProps {
 function FilterPill({ label, value, active, count, onClick }: FilterPillProps) {
   const activeStyles: Record<string, string> = {
     all:    "bg-foreground text-background border-foreground",
-    win:    "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
-    loss:   "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30",
-    Easy:   "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
-    Medium: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
-    Hard:   "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30",
+    win:    "bg-emerald-500/15 text-success border-emerald-500/30",
+    loss:   "bg-rose-500/15 text-danger border-rose-500/30",
+    Easy:   "bg-emerald-500/15 text-success border-emerald-500/30",
+    Medium: "bg-amber-500/15 text-warning border-amber-500/30",
+    Hard:   "bg-rose-500/15 text-danger border-rose-500/30",
   };
 
   return (
@@ -97,8 +97,8 @@ function BattleRow({ battle }: BattleRowProps) {
         <div className={cn(
           "w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-[11px] font-bold border",
           won
-            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-            : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
+            ? "bg-emerald-500/10 text-success border-emerald-500/20"
+            : "bg-rose-500/10 text-danger border-rose-500/20"
         )}>
           {won ? "W" : "L"}
         </div>
@@ -122,7 +122,7 @@ function BattleRow({ battle }: BattleRowProps) {
       <div className="flex items-center gap-4 shrink-0 ml-3">
         <div className="text-right">
           <p className="text-sm font-bold font-mono tabular-nums">
-            <span className={won ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}>
+            <span className={won ? "text-success" : "text-danger"}>
               {battle.myScore}
             </span>
             <span className="text-muted-foreground/40 mx-1.5 text-xs">·</span>
@@ -198,9 +198,9 @@ export default function History() {
         {/* ── Summary Stats ────────────────────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <StatCard label="Total Battles" value={ALL_BATTLES.length} color="text-foreground" />
-          <StatCard label="Wins"          value={wins}               color="text-emerald-600 dark:text-emerald-400" />
-          <StatCard label="Losses"        value={losses}             color="text-rose-600 dark:text-rose-400" />
-          <StatCard label="Win Rate"      value={`${winRate}%`}      color="text-violet-600 dark:text-violet-400" />
+          <StatCard label="Wins"          value={wins}               color="text-success" />
+          <StatCard label="Losses"        value={losses}             color="text-danger" />
+          <StatCard label="Win Rate"      value={`${winRate}%`}      color="text-brand" />
         </div>
 
         {/* ── Win Rate Bar ─────────────────────────────────────── */}
@@ -231,7 +231,7 @@ export default function History() {
               />
             </div>
             <div className="flex justify-between mt-2">
-              <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">{winRate}% win rate</span>
+              <span className="text-xs text-success font-semibold">{winRate}% win rate</span>
               <span className="text-xs text-muted-foreground">{ALL_BATTLES.length} battles</span>
             </div>
           </CardContent>

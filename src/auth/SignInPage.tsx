@@ -4,17 +4,43 @@ import { Link, useNavigate } from "react-router-dom";
 import { useClerk } from "@clerk/react";
 import { useSignIn } from "@clerk/react/legacy";
 import { Swords, Eye, EyeOff, ArrowRight, Github } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
+
+type ClerkErrorLike = {
+  errors?: Array<{
+    longMessage?: string;
+    message?: string;
+  }>;
+};
+
+function getClerkErrorMessage(err: unknown, fallback: string) {
+  if (typeof err === "object" && err !== null && "errors" in err) {
+    const first = (err as ClerkErrorLike).errors?.[0];
+    return first?.longMessage ?? first?.message ?? fallback;
+  }
+  return fallback;
+}
+
+function getLoadingMessage(loading: boolean, oauthLoading: null | "oauth_github" | "oauth_google") {
+  if (oauthLoading === "oauth_github") return "Connecting to GitHub...";
+  if (oauthLoading === "oauth_google") return "Connecting to Google...";
+  if (loading) return "Signing you in...";
+  return null;
+}
 
 export default function SignIn() {
   const { signIn, isLoaded } = useSignIn();
-const { setActive } = useClerk();
+  const { setActive } = useClerk();
   const navigate = useNavigate();
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword]     = useState("");
   const [showPass, setShowPass]     = useState(false);
   const [loading, setLoading]       = useState(false);
+  const [oauthLoading, setOauthLoading] = useState<null | "oauth_github" | "oauth_google">(null);
   const [error, setError]           = useState("");
+  const isAuthInProgress = loading || oauthLoading !== null;
+  const loadingMessage = getLoadingMessage(loading, oauthLoading);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,8 +53,8 @@ const { setActive } = useClerk();
         await setActive({ session: result.createdSessionId });
         navigate("/");
       }
-    } catch (err: any) {
-      setError(err.errors?.[0]?.longMessage ?? err.errors?.[0]?.message ?? "Invalid credentials.");
+    } catch (err: unknown) {
+      setError(getClerkErrorMessage(err, "Invalid credentials."));
     } finally {
       setLoading(false);
     }
@@ -36,6 +62,7 @@ const { setActive } = useClerk();
 
   const handleOAuth = async (strategy: "oauth_github" | "oauth_google") => {
     if (!isLoaded || !signIn) return;
+    setOauthLoading(strategy);
     setError("");
     try {
       await signIn.authenticateWithRedirect({
@@ -43,14 +70,16 @@ const { setActive } = useClerk();
         redirectUrl: "/sso-callback",
         redirectUrlComplete: "/",
       });
-    } catch (err: any) {
-      setError(err.errors?.[0]?.longMessage ?? err.errors?.[0]?.message ?? "OAuth sign-in failed.");
+    } catch (err: unknown) {
+      setError(getClerkErrorMessage(err, "OAuth sign-in failed."));
+    } finally {
+      setOauthLoading(null);
     }
   };
 
   return (
     <div
-      className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center px-4"
+      className="min-h-screen bg-background text-foreground flex items-center justify-center px-4"
       style={{ fontFamily: "'Figtree', sans-serif" }}
     >
       <div className="fixed inset-0 pointer-events-none">
@@ -77,14 +106,14 @@ const { setActive } = useClerk();
           </span>
         </Link>
 
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-8">
+        <div className="rounded-2xl border border-border bg-card/60 p-8">
           <h1
             className="text-2xl font-bold tracking-tight mb-1"
             style={{ fontFamily: "'Syne', sans-serif" }}
           >
             Welcome back
           </h1>
-          <p className="text-sm text-zinc-500 mb-7">
+          <p className="text-sm text-muted-foreground mb-7">
             Don't have an account?{" "}
             <Link to="/sign-up" className="text-emerald-400 hover:text-emerald-300 transition-colors">
               Sign up
@@ -96,35 +125,66 @@ const { setActive } = useClerk();
             <button
               type="button"
               onClick={() => handleOAuth("oauth_github")}
-              className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-sm font-medium text-zinc-300 transition-colors"
+              disabled={isAuthInProgress || !isLoaded}
+              className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-border bg-card hover:bg-secondary text-sm font-medium text-foreground transition-colors"
             >
-              <Github className="h-4 w-4" />
-              GitHub
+              {oauthLoading === "oauth_github" ? (
+                <>
+                  <Spinner className="size-4" />
+                  Connecting...
+                </>
+              ) : (
+                <>
+                  <Github className="h-4 w-4" />
+                  GitHub
+                </>
+              )}
             </button>
             <button
               type="button"
               onClick={() => handleOAuth("oauth_google")}
-              className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-sm font-medium text-zinc-300 transition-colors"
+              disabled={isAuthInProgress || !isLoaded}
+              className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-border bg-card hover:bg-secondary text-sm font-medium text-foreground transition-colors"
             >
-              <svg className="h-4 w-4" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-              </svg>
-              Google
+              {oauthLoading === "oauth_google" ? (
+                <>
+                  <Spinner className="size-4" />
+                  Connecting...
+                </>
+              ) : (
+                <>
+                  <svg className="h-4 w-4" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                  </svg>
+                  Google
+                </>
+              )}
             </button>
           </div>
 
           <div className="flex items-center gap-3 mb-5">
-            <div className="flex-1 h-px bg-zinc-800" />
-            <span className="text-xs text-zinc-600">or</span>
-            <div className="flex-1 h-px bg-zinc-800" />
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-xs text-muted-foreground">or</span>
+            <div className="flex-1 h-px bg-border" />
           </div>
+
+          {loadingMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 flex items-center gap-2 text-xs text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2"
+            >
+              <Spinner className="size-3.5" />
+              <span>{loadingMessage}</span>
+            </motion.div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-zinc-400 mb-1.5">
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
                 Username or Email
               </label>
               <input
@@ -132,15 +192,16 @@ const { setActive } = useClerk();
                 value={identifier}
                 onChange={e => setIdentifier(e.target.value)}
                 placeholder="your_handle or you@example.com"
+                disabled={isAuthInProgress}
                 required
-                className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-700 bg-zinc-950 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
               />
             </div>
 
             <div>
               <div className="flex justify-between mb-1.5">
-                <label className="text-xs font-semibold text-zinc-400">Password</label>
-                <a href="#" className="text-xs text-zinc-500 hover:text-emerald-400 transition-colors">Forgot?</a>
+                <label className="text-xs font-semibold text-muted-foreground">Password</label>
+                <a href="#" className="text-xs text-muted-foreground hover:text-emerald-400 transition-colors">Forgot?</a>
               </div>
               <div className="relative">
                 <input
@@ -148,13 +209,15 @@ const { setActive } = useClerk();
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••"
+                  disabled={isAuthInProgress}
                   required
-                  className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-zinc-700 bg-zinc-950 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
+                  className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPass(p => !p)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400 transition-colors"
+                  disabled={isAuthInProgress}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -173,21 +236,21 @@ const { setActive } = useClerk();
 
             <button
               type="submit"
-              disabled={loading || !isLoaded}
+              disabled={isAuthInProgress || !isLoaded}
               className="group w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm transition-all shadow-lg shadow-emerald-500/20 hover:-translate-y-0.5"
             >
               {loading
-                ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ? <><Spinner className="size-4" />Signing in...</>
                 : <>Sign in <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" /></>
               }
             </button>
           </form>
         </div>
 
-        <p className="text-center text-xs text-zinc-700 mt-6">
+        <p className="text-center text-xs text-muted-foreground mt-6">
           By continuing you agree to our{" "}
-          <a href="#" className="hover:text-zinc-500 transition-colors">Terms</a> &{" "}
-          <a href="#" className="hover:text-zinc-500 transition-colors">Privacy</a>
+          <a href="#" className="hover:text-foreground transition-colors">Terms</a> &{" "}
+          <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
         </p>
       </motion.div>
     </div>

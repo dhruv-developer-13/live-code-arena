@@ -10,6 +10,7 @@ import {
 import { Header } from "@/components/Header";
 import { PageBackground } from "@/components/PageBackground";
 import { cn } from "@/lib/utils";
+import { CardContainer } from "@/components/ui/card-container";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -284,7 +285,7 @@ export default function Results() {
           {/* Right stat column */}
           <div className="flex flex-col gap-4">
             {/* Problems solved */}
-            <div className="flex-1 rounded-2xl border border-border bg-card p-6 flex flex-col justify-between">
+            <CardContainer className="flex-1 flex flex-col justify-between">
               <div className="flex items-center gap-2 mb-4">
                 <Target className="h-4 w-4 text-muted-foreground" />
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Problems Solved</span>
@@ -300,10 +301,10 @@ export default function Results() {
                   ))}
                 </div>
               </div>
-            </div>
+            </CardContainer>
 
             {/* AI quality score */}
-            <div className="flex-1 rounded-2xl border border-border bg-card p-6 flex flex-col justify-between">
+            <CardContainer className="flex-1 flex flex-col justify-between">
               <div className="flex items-center gap-2 mb-4">
                 <Brain className="h-4 w-4 text-violet-400" />
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Code Quality</span>
@@ -323,7 +324,7 @@ export default function Results() {
               ) : (
                 <p className="text-sm text-muted-foreground">Unavailable</p>
               )}
-            </div>
+            </CardContainer>
           </div>
         </div>
 
@@ -345,7 +346,7 @@ export default function Results() {
               const oppPct       = result.maxScore > 0 ? (result.opponentScore / result.maxScore) * 100 : 0;
 
               return (
-                <div key={i} className="rounded-2xl border border-border bg-card overflow-hidden">
+                <CardContainer key={i} padded="none">
                   {/* Header row — always visible */}
                   <button
                     onClick={() => setExpandedProblem(isExpanded ? null : i)}
@@ -410,20 +411,20 @@ export default function Results() {
 
                       {/* Test result row */}
                       <div className="grid grid-cols-2 gap-3">
-                        <div className={cn("rounded-xl p-4 border", result.testsPassed.you === result.testsPassed.total ? "bg-emerald-500/5 border-emerald-500/20" : "bg-rose-500/5 border-rose-500/20")}>
+                        <CardContainer variant={result.testsPassed.you === result.testsPassed.total ? "default" : "muted"} padded="md" className={result.testsPassed.you === result.testsPassed.total ? "bg-emerald-500/5 border-emerald-500/20" : "bg-rose-500/5 border-rose-500/20"}>
                           <p className="text-xs font-semibold text-muted-foreground mb-1">Your Tests</p>
                           <p className="text-2xl font-black font-mono">
                             <span className={result.testsPassed.you === result.testsPassed.total ? "text-emerald-400" : "text-rose-400"}>{result.testsPassed.you}</span>
                             <span className="text-muted-foreground text-lg">/{result.testsPassed.total}</span>
                           </p>
-                        </div>
-                        <div className={cn("rounded-xl p-4 border", result.testsPassed.opponent === result.testsPassed.total ? "bg-emerald-500/5 border-emerald-500/20" : "bg-amber-500/5 border-amber-500/20")}>
+                        </CardContainer>
+                        <CardContainer variant={result.testsPassed.opponent === result.testsPassed.total ? "default" : "muted"} padded="md" className={result.testsPassed.opponent === result.testsPassed.total ? "bg-emerald-500/5 border-emerald-500/20" : "bg-amber-500/5 border-amber-500/20"}>
                           <p className="text-xs font-semibold text-muted-foreground mb-1">Opponent's Tests</p>
                           <p className="text-2xl font-black font-mono">
                             <span className={result.testsPassed.opponent === result.testsPassed.total ? "text-emerald-400" : "text-amber-400"}>{result.testsPassed.opponent}</span>
                             <span className="text-muted-foreground text-lg">/{result.testsPassed.total}</span>
                           </p>
-                        </div>
+                        </CardContainer>
                       </div>
 
                       {/* AI analysis */}
@@ -509,7 +510,7 @@ export default function Results() {
                       )}
                     </div>
                   )}
-                </div>
+                </CardContainer>
               );
             })}
           </div>

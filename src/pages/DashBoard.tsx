@@ -42,7 +42,7 @@ function StatCard({ icon: Icon, label, value, sub, accent, trend }: {
             <Icon className="h-4 w-4" />
           </div>
           {trend && (
-            <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-0.5">
+            <span className="text-xs text-success font-medium flex items-center gap-0.5">
               <ArrowUpRight className="h-3 w-3" />{trend}
             </span>
           )}
@@ -56,9 +56,9 @@ function StatCard({ icon: Icon, label, value, sub, accent, trend }: {
 }
 
 const DIFF_STYLES = {
-  Easy:   "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
-  Medium: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-  Hard:   "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
+  Easy:   "bg-emerald-500/10 text-success border-emerald-500/20",
+  Medium: "bg-amber-500/10 text-warning border-amber-500/20",
+  Hard:   "bg-rose-500/10 text-danger border-rose-500/20",
 } as const;
 
 function BattleRow({ battle }: { battle: typeof RECENT_BATTLES[0] }) {
@@ -70,8 +70,8 @@ function BattleRow({ battle }: { battle: typeof RECENT_BATTLES[0] }) {
         <div className={cn(
           "w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-[11px] font-bold border",
           won
-            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-            : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
+            ? "bg-emerald-500/10 text-success border-emerald-500/20"
+            : "bg-rose-500/10 text-danger border-rose-500/20"
         )}>
           {won ? "W" : "L"}
         </div>
@@ -95,7 +95,7 @@ function BattleRow({ battle }: { battle: typeof RECENT_BATTLES[0] }) {
         {/* Score */}
         <div className="text-right">
           <p className="text-sm font-bold font-mono tabular-nums">
-            <span className={won ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}>
+            <span className={won ? "text-success" : "text-danger"}>
               {battle.myScore}
             </span>
             <span className="text-muted-foreground/40 mx-1.5 text-xs">·</span>
@@ -139,7 +139,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-4">
             <Avatar className="h-12 w-12 border-2 border-border">
               {userAvatar && <AvatarImage src={userAvatar} alt={userName} />}
-              <AvatarFallback className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-lg">
+              <AvatarFallback className="bg-emerald-500/10 text-success font-bold text-lg">
                 {userInitial}
               </AvatarFallback>
             </Avatar>
@@ -147,7 +147,7 @@ export default function Dashboard() {
               <p className="text-xs text-muted-foreground mb-0.5">Welcome back</p>
               <h1 className="text-xl font-bold tracking-tight">{userName}</h1>
               <div className="flex items-center gap-2 mt-1">
-                <Badge variant="outline" className="text-[10px] font-semibold px-2 py-0 h-5 gap-1 border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/8">
+                <Badge variant="outline" className="text-[10px] font-semibold px-2 py-0 h-5 gap-1 border-amber-500/30 text-warning bg-amber-500/8">
                   <Trophy className="h-2.5 w-2.5" />
                   Gold II
                 </Badge>
@@ -173,11 +173,11 @@ export default function Dashboard() {
 
         {/*  Stats Grid  */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          <StatCard icon={Trophy}     label="Battles Won"   value={STATS.battlesWon}        accent="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" trend="+3 this week" />
-          <StatCard icon={Swords}     label="Total Battles" value={STATS.totalBattles}       accent="bg-blue-500/10 text-blue-600 dark:text-blue-400" />
-          <StatCard icon={Target}     label="Win Rate"      value={`${STATS.winRate}%`}      accent="bg-violet-500/10 text-violet-600 dark:text-violet-400" />
-          <StatCard icon={TrendingUp} label="Avg Score"     value={STATS.avgScore} sub="per match" accent="bg-amber-500/10 text-amber-600 dark:text-amber-400" />
-          <StatCard icon={Zap}        label="Best Streak"   value={`${STATS.bestStreak}d`}  accent="bg-orange-500/10 text-orange-600 dark:text-orange-400" />
+          <StatCard icon={Trophy}     label="Battles Won"   value={STATS.battlesWon}        accent="bg-emerald-500/10 text-success" trend="+3 this week" />
+          <StatCard icon={Swords}     label="Total Battles" value={STATS.totalBattles}       accent="bg-blue-500/10 text-info" />
+          <StatCard icon={Target}     label="Win Rate"      value={`${STATS.winRate}%`}      accent="bg-violet-500/10 text-brand" />
+          <StatCard icon={TrendingUp} label="Avg Score"     value={STATS.avgScore} sub="per match" accent="bg-amber-500/10 text-warning" />
+          <StatCard icon={Zap}        label="Best Streak"   value={`${STATS.bestStreak}d`}  accent="bg-orange-500/10 text-highlight" />
         </div>
 
         {/*  Season Performance  */}
@@ -206,7 +206,7 @@ export default function Dashboard() {
               />
             </div>
             <div className="flex justify-between mt-2">
-              <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">{STATS.winRate}% win rate</span>
+              <span className="text-xs text-success font-semibold">{STATS.winRate}% win rate</span>
               <span className="text-xs text-muted-foreground">{STATS.totalBattles} total</span>
             </div>
           </CardContent>
@@ -283,8 +283,8 @@ export default function Dashboard() {
                       className={cn(
                         "flex-1 h-6 rounded-md flex items-center justify-center text-[10px] font-bold",
                         b.result === "win"
-                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                          : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
+                          ? "bg-emerald-500/15 text-success"
+                          : "bg-rose-500/15 text-danger"
                       )}
                     >
                       {b.result === "win" ? "W" : "L"}
@@ -298,14 +298,14 @@ export default function Dashboard() {
                 <div className="space-y-0">
                   <div className="flex justify-between items-center py-2">
                     <span className="text-xs text-muted-foreground">Wins</span>
-                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                    <span className="text-xs font-bold text-success flex items-center gap-1">
                       <CheckCircle2 className="h-3 w-3" />{wins}
                     </span>
                   </div>
                   <Separator />
                   <div className="flex justify-between items-center py-2">
                     <span className="text-xs text-muted-foreground">Losses</span>
-                    <span className="text-xs font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                    <span className="text-xs font-bold text-danger flex items-center gap-1">
                       <XCircle className="h-3 w-3" />{losses}
                     </span>
                   </div>
@@ -336,9 +336,9 @@ export default function Dashboard() {
                     Hard:   "bg-rose-500",
                   }[diff];
                   const label = {
-                    Easy:   "text-emerald-600 dark:text-emerald-400",
-                    Medium: "text-amber-600 dark:text-amber-400",
-                    Hard:   "text-rose-600 dark:text-rose-400",
+                    Easy:   "text-success",
+                    Medium: "text-warning",
+                    Hard:   "text-danger",
                   }[diff];
                   return (
                     <div key={diff}>
@@ -376,7 +376,7 @@ export default function Dashboard() {
                   onClick={() => navigate("/battle-room")}
                   className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-emerald-500/8 hover:bg-emerald-500/15 border border-emerald-500/20 transition-colors group text-left"
                 >
-                  <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">New Battle</span>
+                  <span className="text-sm font-semibold text-success">New Battle</span>
                   <Swords className="h-4 w-4 text-emerald-500/60 group-hover:text-emerald-500 transition-colors" />
                 </button>
               </CardContent>

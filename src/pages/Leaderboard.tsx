@@ -97,7 +97,7 @@ function TrendBadge({ trend, value }: { trend: "up" | "down" | "same"; value: nu
   return (
     <span className={cn(
       "inline-flex items-center gap-0.5 text-xs font-bold tabular-nums",
-      trend === "up" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+      trend === "up" ? "text-success" : "text-danger"
     )}>
       {trend === "up" ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
       {value}
@@ -114,14 +114,14 @@ function MyRankCard({ stats }: { stats: LeaderboardEntry }) {
           <div className="relative">
             <Avatar username={stats.username} size="lg" />
             <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
-              <TrendingUp className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+              <TrendingUp className="h-3 w-3 text-success" />
             </span>
           </div>
           <div>
             <p className="font-bold text-foreground">@{stats.username}</p>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-2xl font-black text-foreground tabular-nums">#{stats.rank}</span>
-              <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-full">
+              <span className="text-xs text-success font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-full">
                 ↑ {stats.trendValue} this week
               </span>
             </div>
@@ -134,7 +134,7 @@ function MyRankCard({ stats }: { stats: LeaderboardEntry }) {
             <p className="text-xs text-muted-foreground mt-0.5">points</p>
           </div>
           <div className="text-center">
-            <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">{stats.battlesWon}</p>
+            <p className="text-xl font-black text-success tabular-nums">{stats.battlesWon}</p>
             <p className="text-xs text-muted-foreground mt-0.5">wins</p>
           </div>
           <div className="text-center">
@@ -194,7 +194,7 @@ export default function Leaderboard() {
           <Card className="rounded-2xl px-5 py-4 sm:px-6 sm:py-5 gap-0">
             <CardContent className="p-0 flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
-                <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <Users className="h-4 w-4 text-info" />
               </div>
               <div>
                 <p className="text-lg font-black text-foreground tabular-nums">{PLATFORM_STATS.totalPlayers.toLocaleString()}</p>
@@ -205,7 +205,7 @@ export default function Leaderboard() {
           <Card className="rounded-2xl px-5 py-4 sm:px-6 sm:py-5 gap-0">
             <CardContent className="p-0 flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
-                <Zap className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                <Zap className="h-4 w-4 text-success" />
               </div>
               <div>
                 <p className="text-lg font-black text-foreground tabular-nums">{PLATFORM_STATS.battlesThisWeek.toLocaleString()}</p>
@@ -334,7 +334,7 @@ export default function Leaderboard() {
 
                   <TableCell className="hidden md:table-cell px-5 py-4 align-middle">
                     <div className="flex flex-col items-center gap-1">
-                      <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{entry.winRate}%</p>
+                      <p className="text-sm font-bold text-success">{entry.winRate}%</p>
                       <div className="w-14 h-1 bg-muted rounded-full overflow-hidden">
                         <div
                           className="h-full bg-emerald-500 rounded-full"

@@ -37,7 +37,7 @@ export default function BattleRoom() {
             <p className="text-sm text-muted-foreground">Create or join a 1v1 coding battle</p>
           </div>
           </div>
-          <Badge variant="outline" className="text-[10px] font-semibold gap-1.5 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/8 px-2.5 py-1">
+          <Badge variant="outline" className="text-[10px] font-semibold gap-1.5 border-emerald-500/30 text-success bg-emerald-500/8 px-2.5 py-1">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             Matches live
           </Badge>
@@ -107,7 +107,7 @@ export default function BattleRoom() {
           <CardContent className="px-5 py-4">
             <div className="flex items-center gap-2 mb-3">
               <ShieldAlert className="h-4 w-4 text-amber-500" />
-              <p className="text-sm font-bold text-amber-600 dark:text-amber-400">General Rules</p>
+              <p className="text-sm font-bold text-warning">General Rules</p>
             </div>
             <div className="grid sm:grid-cols-2 gap-2">
               {[

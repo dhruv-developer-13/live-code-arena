@@ -492,9 +492,9 @@ export default function BattleArena() {
           <div className="ml-auto flex items-center gap-2">
             <div className={cn(
               "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors",
-              violations === 0 && "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400",
-              violations === 1 && "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400",
-              violations >= 2  && "bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400",
+              violations === 0 && "bg-emerald-500/10 border-emerald-500/20 text-success",
+              violations === 1 && "bg-amber-500/10 border-amber-500/20 text-warning",
+              violations >= 2  && "bg-rose-500/10 border-rose-500/20 text-danger",
             )}>
               <ShieldAlert className="h-3.5 w-3.5" />
               {violations}/{MAX_VIOLATIONS}
@@ -505,7 +505,7 @@ export default function BattleArena() {
               </button>
             )}
             <ThemeToggleButton />
-            <button onClick={() => setShowLeaveDialog(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-600 dark:text-emerald-400 text-sm font-semibold transition-colors border border-emerald-500/20">
+            <button onClick={() => setShowLeaveDialog(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-600/10 hover:bg-emerald-600/20 text-success text-sm font-semibold transition-colors border border-emerald-500/20">
               <LogOut className="h-4 w-4" />
               Submit & Leave
             </button>
@@ -548,9 +548,9 @@ export default function BattleArena() {
                     <h2 className="text-lg font-bold leading-snug">{currentProblem.title}</h2>
                     <span className={cn(
                       "shrink-0 mt-0.5 px-2.5 py-0.5 rounded-full text-xs font-bold",
-                      currentProblem.difficulty === "Easy"   && "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
-                      currentProblem.difficulty === "Medium" && "bg-amber-500/15 text-amber-600 dark:text-amber-400",
-                      currentProblem.difficulty === "Hard"   && "bg-rose-500/15 text-rose-600 dark:text-rose-400",
+                      currentProblem.difficulty === "Easy"   && "bg-emerald-500/15 text-success",
+                      currentProblem.difficulty === "Medium" && "bg-amber-500/15 text-warning",
+                      currentProblem.difficulty === "Hard"   && "bg-rose-500/15 text-danger",
                     )}>{currentProblem.points} pts</span>
                   </div>
                   <p className="text-sm text-muted-foreground leading-relaxed">{currentProblem.description}</p>
@@ -598,7 +598,7 @@ export default function BattleArena() {
             <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-muted/30 shrink-0">
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20">
                 <div className="w-2 h-2 rounded-full bg-blue-500" />
-                <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">Python 3</span>
+                <span className="text-sm font-semibold text-info">Python 3</span>
               </div>
               <div className="flex gap-2">
                 <button onClick={handleRun} disabled={running || loading} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-muted text-sm font-medium transition-colors disabled:opacity-50">
@@ -649,7 +649,7 @@ export default function BattleArena() {
                           <div key={i} className={cn("rounded-xl border p-3 text-xs font-mono space-y-1.5", r.passed ? "bg-emerald-500/5 border-emerald-500/20" : "bg-rose-500/5 border-rose-500/20")}>
                             <div className="flex items-center gap-2 mb-2">
                               {r.passed ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <XCircle className="h-4 w-4 text-rose-500" />}
-                              <span className={cn("font-bold font-sans text-xs", r.passed ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
+                              <span className={cn("font-bold font-sans text-xs", r.passed ? "text-success" : "text-danger")}>
                                 Case {i + 1}: {r.passed ? "Passed" : "Failed"}
                               </span>
                             </div>
@@ -702,7 +702,7 @@ export default function BattleArena() {
                   const earned = myProgress[diff];
                   return (
                     <div key={diff} className="flex items-center justify-between">
-                      <span className={cn("text-sm font-semibold", diff === "Easy" && "text-emerald-600 dark:text-emerald-400", diff === "Medium" && "text-amber-600 dark:text-amber-400", diff === "Hard" && "text-rose-600 dark:text-rose-400")}>{diff}</span>
+                      <span className={cn("text-sm font-semibold", diff === "Easy" && "text-success", diff === "Medium" && "text-warning", diff === "Hard" && "text-danger")}>{diff}</span>
                       {earned !== null
                         ? <span className="flex items-center gap-1.5 text-emerald-500 text-xs font-bold font-mono"><CheckCircle2 className="h-3.5 w-3.5" />{earned}/{maxPts}</span>
                         : <span className="flex items-center gap-1.5 text-muted-foreground text-xs font-mono"><Circle className="h-3.5 w-3.5" />0/{maxPts}</span>}
@@ -723,7 +723,7 @@ export default function BattleArena() {
                         <p className="font-semibold text-foreground leading-snug">{sub.problem}</p>
                         <p className="text-muted-foreground mt-0.5">{sub.time}</p>
                       </div>
-                      <span className={cn("font-black font-mono text-xs px-2 py-0.5 rounded-md", sub.status === "AC" && "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", sub.status === "WA" && "bg-rose-500/15 text-rose-600 dark:text-rose-400", sub.status === "TLE" && "bg-amber-500/15 text-amber-600 dark:text-amber-400")}>{sub.status}</span>
+                      <span className={cn("font-black font-mono text-xs px-2 py-0.5 rounded-md", sub.status === "AC" && "bg-emerald-500/15 text-success", sub.status === "WA" && "bg-rose-500/15 text-danger", sub.status === "TLE" && "bg-amber-500/15 text-warning")}>{sub.status}</span>
                     </div>
                   ))}
               </div>

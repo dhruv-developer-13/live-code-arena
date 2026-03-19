@@ -1,60 +1,43 @@
-import { createContext, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { LIGHT_THEME_TOKENS, THEME_STORAGE_KEY, type AppTheme } from "./theme";
-
-type ThemeContextValue = {
-  theme: AppTheme;
-  setTheme: (theme: AppTheme) => void;
-  toggleTheme: () => void;
-};
-
-export const ThemeContext = createContext<ThemeContextValue | null>(null);
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { THEME_TOKENS, THEME_STORAGE_KEY, type AppTheme } from "./theme";
+import { ThemeContext, type ThemeContextValue } from "./ThemeContext";
 
 function getInitialTheme(): AppTheme {
-  const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+  if (typeof window === "undefined") return "light";
+  const storedTheme = globalThis.localStorage.getItem(THEME_STORAGE_KEY);
   if (storedTheme === "light" || storedTheme === "dark") {
     return storedTheme;
   }
   return document.documentElement.classList.contains("dark") ? "dark" : "light";
 }
 
-function applyLightTokens(root: HTMLElement) {
-  for (const [token, value] of Object.entries(LIGHT_THEME_TOKENS)) {
-    root.style.setProperty(token, value);
-  }
+function applyThemeTokens(root: HTMLElement, theme: AppTheme) {
+  Object.entries(THEME_TOKENS[theme]).forEach(([token, value]) => {
+  root.style.setProperty(token, value);
+});
 }
 
-function clearLightTokens(root: HTMLElement) {
-  for (const token of Object.keys(LIGHT_THEME_TOKENS)) {
-    root.style.removeProperty(token);
-  }
-}
-
-export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<AppTheme>(() => getInitialTheme());
-
-  const setTheme = useCallback((nextTheme: AppTheme) => {
-    setThemeState(nextTheme);
-  }, []);
+export function ThemeProvider({ children }: Readonly<{ children: ReactNode }>) {
+  const [theme, setTheme] = useState<AppTheme>(() => getInitialTheme());
 
   const toggleTheme = useCallback(() => {
-    setThemeState((currentTheme) => (currentTheme === "dark" ? "light" : "dark"));
+    setTheme((currentTheme) => (currentTheme === "dark" ? "light" : "dark"));
   }, []);
 
   useEffect(() => {
     const root = document.documentElement;
+    applyThemeTokens(root, theme);
 
     if (theme === "dark") {
-      clearLightTokens(root);
       root.classList.add("dark");
     } else {
       root.classList.remove("dark");
-      applyLightTokens(root);
     }
 
-    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+    globalThis.localStorage.setItem(THEME_STORAGE_KEY, theme);
   }, [theme]);
 
-  const value = useMemo<ThemeContextValue>(() => ({ theme, setTheme, toggleTheme }), [theme, setTheme, toggleTheme]);
+  const value = useMemo<ThemeContextValue>(() => ({ theme, setTheme, toggleTheme }), [theme, toggleTheme]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
