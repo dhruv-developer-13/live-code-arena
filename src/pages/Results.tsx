@@ -10,7 +10,7 @@ import {
 import { Header } from "@/components/Header";
 import { PageBackground } from "@/components/PageBackground";
 import { cn } from "@/lib/utils";
-import { CardContainer } from "@/components/ui/card-container";
+import { Card as CardContainer } from "@/components/ui/card";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -75,7 +75,7 @@ Return ONLY a valid JSON array (no markdown, no explanation):
 [{"title":"...","you":{"timeComplexity":"O(n)","spaceComplexity":"O(n)","qualityScore":8,"strengths":["..."],"improvements":["..."],"verdict":"..."},"opponent":{"timeComplexity":"O(n²)","spaceComplexity":"O(1)","qualityScore":5,"strengths":["..."],"improvements":["..."],"verdict":"..."},"comparison":"..."}]`;
 
   try {
-    const res   = await fetch(`${AI_BASE}/ai/review`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt }) });
+    const res = await fetch(`${AI_BASE}/ai/review`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt }) });
     const { text } = await res.json();
     return JSON.parse(text.replace(/```json|```/g, "").trim()) as ProblemAIResult[];
   } catch { return []; }
@@ -112,17 +112,17 @@ Answer questions about grading, code quality, or improvements. Be direct. Under 
 // ─── DIFFICULTY CONFIG ────────────────────────────────────────────────────────
 
 const DIFF = {
-  Easy:   { color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", bar: "bg-emerald-500" },
-  Medium: { color: "text-amber-400",   bg: "bg-amber-500/10",   border: "border-amber-500/20",   bar: "bg-amber-500"   },
-  Hard:   { color: "text-rose-400",    bg: "bg-rose-500/10",    border: "border-rose-500/20",     bar: "bg-rose-500"    },
+  Easy: { color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", bar: "bg-emerald-500" },
+  Medium: { color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20", bar: "bg-amber-500" },
+  Hard: { color: "text-rose-400", bg: "bg-rose-500/10", border: "border-rose-500/20", bar: "bg-rose-500" },
 } as const;
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 export default function Results() {
-  const { roomCode }  = useParams<{ roomCode: string }>();
-  const navigate      = useNavigate();
-  const location      = useLocation();
+  const { roomCode } = useParams<{ roomCode: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
   const results: QuestionResult[] = location.state?.results ?? [];
 
   // If no results were passed (e.g. direct URL navigation), redirect to home
@@ -130,22 +130,22 @@ export default function Results() {
     if (!location.state?.results) navigate("/", { replace: true });
   }, []);
 
-  const myTotal       = results.reduce((s, r) => s + r.yourScore, 0);
+  const myTotal = results.reduce((s, r) => s + r.yourScore, 0);
   const opponentTotal = results.reduce((s, r) => s + r.opponentScore, 0);
-  const isWinner      = myTotal > opponentTotal;
-  const isTie         = myTotal === opponentTotal;
-  const maxPossible   = results.reduce((s, r) => s + r.maxScore, 0);
+  const isWinner = myTotal > opponentTotal;
+  const isTie = myTotal === opponentTotal;
+  const maxPossible = results.reduce((s, r) => s + r.maxScore, 0);
 
-  const [aiAnalysis, setAiAnalysis]   = useState<ProblemAIResult[]>([]);
-  const [aiLoading, setAiLoading]     = useState(true);
-  const [aiError, setAiError]         = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState<ProblemAIResult[]>([]);
+  const [aiLoading, setAiLoading] = useState(true);
+  const [aiError, setAiError] = useState(false);
   const [expandedProblem, setExpandedProblem] = useState<number | null>(0);
 
-  const [chatOpen, setChatOpen]         = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     { role: "assistant", content: "Hi! I've reviewed your battle. Ask me anything about the grading, your code quality, or how to improve." },
   ]);
-  const [chatInput, setChatInput]   = useState("");
+  const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -183,7 +183,7 @@ export default function Results() {
     else navigator.clipboard.writeText(text);
   };
 
-  const solved  = results.filter(r => r.yourScore > 0).length;
+  const solved = results.filter(r => r.yourScore > 0).length;
   const avgQuality = aiAnalysis.length > 0
     ? Math.round(aiAnalysis.reduce((s, a) => s + (a.you?.qualityScore ?? 0), 0) / aiAnalysis.length * 10) / 10
     : null;
@@ -208,8 +208,8 @@ export default function Results() {
           <div className={cn(
             "lg:col-span-2 rounded-2xl border p-8 flex flex-col justify-between relative overflow-hidden",
             isWinner ? "bg-emerald-500/5 border-emerald-500/20"
-            : isTie   ? "bg-amber-500/5 border-amber-500/20"
-            :            "bg-rose-500/5 border-rose-500/20"
+              : isTie ? "bg-amber-500/5 border-amber-500/20"
+                : "bg-rose-500/5 border-rose-500/20"
           )}>
             {/* Decorative corner */}
             <div className={cn(
@@ -223,8 +223,8 @@ export default function Results() {
                   <div className={cn(
                     "w-10 h-10 rounded-xl flex items-center justify-center",
                     isWinner ? "bg-emerald-500/15 border border-emerald-500/30"
-                    : isTie   ? "bg-amber-500/15 border border-amber-500/30"
-                    :            "bg-rose-500/15 border border-rose-500/30"
+                      : isTie ? "bg-amber-500/15 border border-amber-500/30"
+                        : "bg-rose-500/15 border border-rose-500/30"
                   )}>
                     <Trophy className={cn("h-5 w-5", isWinner ? "text-emerald-400" : isTie ? "text-amber-400" : "text-rose-400")} />
                   </div>
@@ -238,8 +238,8 @@ export default function Results() {
                 </h1>
                 <p className="text-sm text-muted-foreground max-w-sm">
                   {isWinner ? "Outscored your opponent across the board. Clean win."
-                  : isTie   ? "A perfectly matched battle. Neither player could pull ahead."
-                  :            "Your opponent had the edge this time. Study the breakdown below."}
+                    : isTie ? "A perfectly matched battle. Neither player could pull ahead."
+                      : "Your opponent had the edge this time. Study the breakdown below."}
                 </p>
               </div>
 
@@ -337,16 +337,16 @@ export default function Results() {
 
           <div className="space-y-3">
             {results.map((result, i) => {
-              const ai           = aiAnalysis[i];
-              const isExpanded   = expandedProblem === i;
-              const youWon       = result.yourScore > result.opponentScore;
-              const tied         = result.yourScore === result.opponentScore;
-              const diff         = DIFF[result.difficulty];
-              const yourPct      = result.maxScore > 0 ? (result.yourScore / result.maxScore) * 100 : 0;
-              const oppPct       = result.maxScore > 0 ? (result.opponentScore / result.maxScore) * 100 : 0;
+              const ai = aiAnalysis[i];
+              const isExpanded = expandedProblem === i;
+              const youWon = result.yourScore > result.opponentScore;
+              const tied = result.yourScore === result.opponentScore;
+              const diff = DIFF[result.difficulty];
+              const yourPct = result.maxScore > 0 ? (result.yourScore / result.maxScore) * 100 : 0;
+              const oppPct = result.maxScore > 0 ? (result.opponentScore / result.maxScore) * 100 : 0;
 
               return (
-                <CardContainer key={i} padded="none">
+                <CardContainer key={i} padding="none">
                   {/* Header row — always visible */}
                   <button
                     onClick={() => setExpandedProblem(isExpanded ? null : i)}
@@ -411,14 +411,14 @@ export default function Results() {
 
                       {/* Test result row */}
                       <div className="grid grid-cols-2 gap-3">
-                        <CardContainer variant={result.testsPassed.you === result.testsPassed.total ? "default" : "muted"} padded="md" className={result.testsPassed.you === result.testsPassed.total ? "bg-emerald-500/5 border-emerald-500/20" : "bg-rose-500/5 border-rose-500/20"}>
+                        <CardContainer variant={result.testsPassed.you === result.testsPassed.total ? "default" : "muted"} padding="md" className={result.testsPassed.you === result.testsPassed.total ? "bg-emerald-500/5 border-emerald-500/20" : "bg-rose-500/5 border-rose-500/20"}>
                           <p className="text-xs font-semibold text-muted-foreground mb-1">Your Tests</p>
                           <p className="text-2xl font-black font-mono">
                             <span className={result.testsPassed.you === result.testsPassed.total ? "text-emerald-400" : "text-rose-400"}>{result.testsPassed.you}</span>
                             <span className="text-muted-foreground text-lg">/{result.testsPassed.total}</span>
                           </p>
                         </CardContainer>
-                        <CardContainer variant={result.testsPassed.opponent === result.testsPassed.total ? "default" : "muted"} padded="md" className={result.testsPassed.opponent === result.testsPassed.total ? "bg-emerald-500/5 border-emerald-500/20" : "bg-amber-500/5 border-amber-500/20"}>
+                        <CardContainer variant={result.testsPassed.opponent === result.testsPassed.total ? "default" : "muted"} padding="md" className={result.testsPassed.opponent === result.testsPassed.total ? "bg-emerald-500/5 border-emerald-500/20" : "bg-amber-500/5 border-amber-500/20"}>
                           <p className="text-xs font-semibold text-muted-foreground mb-1">Opponent's Tests</p>
                           <p className="text-2xl font-black font-mono">
                             <span className={result.testsPassed.opponent === result.testsPassed.total ? "text-emerald-400" : "text-amber-400"}>{result.testsPassed.opponent}</span>

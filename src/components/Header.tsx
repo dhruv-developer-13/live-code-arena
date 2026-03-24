@@ -9,7 +9,7 @@ export function Header() {
 
 const navLinks = [
   { label: "Home", href: "/" },
-  { label: "Battle Room",href: `/battle-room`},
+  { label: "Battle Room",href: "/battle-room"},
   { label: "Battle History", href: "/history" },
   { label: "Leaderboard", href: "/leaderboard" },
 ];
@@ -24,16 +24,17 @@ const navLinks = [
         </Link>
 
         {/* Desktop nav links */}
-        <div className="hidden sm:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
+        <div className="hidden sm:flex items-center gap-1 absolute left-1/2 -translate-x-1/2 rounded-xl border border-border/60 bg-muted/30 p-1">
           {navLinks.map((link) => (
             <Link
               key={link.href}
               to={link.href}
+              aria-current={location.pathname === link.href ? "page" : undefined}
               className={cn(
-                "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+                "px-3 py-1.5 rounded-lg text-sm font-medium transition-all",
                 location.pathname === link.href
-                  ? "bg-muted text-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                  ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-transparent"
               )}
             >
               {link.label}

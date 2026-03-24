@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import {
   Swords,
@@ -22,15 +22,70 @@ import { STATS } from "@/data/stats";
 import { BattlePreview } from "@/components/landing/BattlePreview";
 import { Reveal } from "@/components/landing/Reveal";
 import { accentMap } from "@/lib/accentMap";
-import { Badge } from "@/components/ui/badge-custom";
+import { Badge } from "@/components/ui/badge";
 import { Section } from "@/components/ui/section";
-import { CardContainer } from "@/components/ui/card-container";
+import { Card as CardContainer } from "@/components/ui/card";
 import { ThemeToggleButton } from "@/components/ThemeToggleButton";
 
 export default function LandingPage() {
   const { scrollY } = useScroll();
   const heroY = useTransform(scrollY, [0, 500], [0, -80]);
   const [hoveredFeature, setHoveredFeature] = useState<number | null>(null);
+  const [activeSection, setActiveSection] = useState("#features");
+
+  const navLinks = useMemo(
+    () => [
+      { label: "Features", href: "#features" },
+      { label: "How it Works", href: "#how-it-works" },
+      { label: "Interface", href: "#interface" },
+      { label: "Why CodeArena", href: "#why-codearena" },
+    ],
+    []
+  );
+
+  useEffect(() => {
+    const updateFromHash = () => {
+      setActiveSection(globalThis.location.hash || "#features");
+    };
+
+    updateFromHash();
+    globalThis.addEventListener("hashchange", updateFromHash);
+
+    return () => {
+      globalThis.removeEventListener("hashchange", updateFromHash);
+    };
+  }, []);
+
+  useEffect(() => {
+    const sections = navLinks
+      .map((link) => globalThis.document.querySelector(link.href))
+      .filter((node): node is HTMLElement => Boolean(node));
+
+    if (sections.length === 0) return;
+
+    const updateFromScroll = () => {
+      const navOffset = 120;
+      const y = globalThis.scrollY;
+      let current = `#${sections[0].id}`;
+
+      for (const section of sections) {
+        if (y >= section.offsetTop - navOffset) {
+          current = `#${section.id}`;
+        }
+      }
+
+      setActiveSection(current);
+    };
+
+    updateFromScroll();
+    globalThis.addEventListener("scroll", updateFromScroll, { passive: true });
+    globalThis.addEventListener("resize", updateFromScroll);
+
+    return () => {
+      globalThis.removeEventListener("scroll", updateFromScroll);
+      globalThis.removeEventListener("resize", updateFromScroll);
+    };
+  }, [navLinks]);
 
   return (
     <div
@@ -55,9 +110,20 @@ export default function LandingPage() {
             code<span className="text-emerald-400">arena</span>
           </span>
         </div>
-        <div className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
-          {["Features", "How it Works", "Interface", "Why CodeArena"].map(l => (
-            <a key={l} href={`#${l.toLowerCase().replace(/ /g, "-")}`} className="hover:text-foreground transition-colors">{l}</a>
+        <div className="hidden md:flex items-center gap-1 rounded-xl border border-border/60 bg-muted/30 p-1">
+          {navLinks.map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              onClick={() => setActiveSection(link.href)}
+              aria-current={activeSection === link.href ? "page" : undefined}
+              className={activeSection === link.href
+                ? "px-3 py-1.5 rounded-lg text-sm font-medium transition-all bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-sm"
+                : "px-3 py-1.5 rounded-lg text-sm font-medium transition-all text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-transparent"
+              }
+            >
+              {link.label}
+            </a>
           ))}
         </div>
         <div className="flex items-center gap-3">
@@ -179,7 +245,7 @@ export default function LandingPage() {
                 onHoverEnd={() => setHoveredFeature(null)}
                 className="relative group cursor-default overflow-hidden transition-colors duration-300"
               >
-                <CardContainer interactive padded="md">
+                <CardContainer interactive padding="md">
                   {/* Hover glow */}
                   <AnimatePresence>
                     {hoveredFeature === i && (
@@ -193,7 +259,7 @@ export default function LandingPage() {
                     )}
                   </AnimatePresence>
 
-                  <div className={`relative z-10 inline-flex p-2.5 rounded-xl ${accentMap[accent].bg} border ${accentMap[accent].border} mb-4`}>
+                  <div className={`relative z-10 self-start inline-flex p-2.5 rounded-xl ${accentMap[accent].bg} border ${accentMap[accent].border} mb-4`}>
                     <Icon className={`h-5 w-5 ${accentMap[accent].text}`} />
                   </div>
                   <h3 className="relative z-10 text-base font-semibold text-foreground mb-2">{title}</h3>
@@ -224,7 +290,7 @@ export default function LandingPage() {
                 {i < STEPS.length - 1 && (
                   <div className="hidden lg:block absolute top-8 left-full w-6 h-px bg-border z-10" />
                 )}
-                <CardContainer variant="muted" padded="md">
+                <CardContainer variant="muted" padding="md">
                   <div className="flex items-center gap-3 mb-4">
                     <span className="font-mono text-xs font-bold text-emerald-400">{n}</span>
                     <div className="p-2 rounded-lg bg-muted">
@@ -263,7 +329,7 @@ export default function LandingPage() {
                 transition={{ duration: 0.2 }}
                 className="relative overflow-hidden group"
               >
-                <CardContainer padded="md">
+                <CardContainer padding="md">
                   <div className={`absolute inset-0 bg-gradient-to-b ${color} opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none`} />
                   {/* Mock UI element */}
                   <div className="relative z-10 mb-5 rounded-xl border border-border bg-background p-3 font-mono text-xs">
@@ -352,8 +418,8 @@ export default function LandingPage() {
                   key={label}
                   whileHover={{ scale: 1.03 }}
                 >
-                  <CardContainer variant="muted" padded="md">
-                    <div className={`inline-flex p-2 rounded-lg ${accentMap[accent].bg} mb-3`}>
+                  <CardContainer variant="muted" padding="md">
+                    <div className={`self-start inline-flex p-2 rounded-lg ${accentMap[accent].bg} mb-3`}>
                       <Icon className={`h-4 w-4 ${accentMap[accent].text}`} />
                     </div>
                     <p className="text-sm font-semibold text-foreground mb-1">{label}</p>
@@ -384,7 +450,7 @@ export default function LandingPage() {
                 whileHover={{ y: -3 }}
                 transition={{ duration: 0.2 }}
               >
-                <CardContainer padded="md">
+                <CardContainer padding="md">
                   <div className="flex gap-0.5 mb-4">
                     {Array.from({ length: rating }).map((_, j) => (
                       <Star key={j} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
@@ -410,7 +476,7 @@ export default function LandingPage() {
       {/*  FINAL CTA  */}
       <Section container="default" className="py-28">
         <Reveal>
-          <CardContainer variant="default" padded="lg" className="relative max-w-3xl mx-auto text-center overflow-hidden">
+          <CardContainer variant="default" padding="lg" className="relative max-w-3xl mx-auto text-center overflow-hidden">
             {/* Corner glow */}
             <div className="absolute -top-24 -right-24 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-emerald-500/8 rounded-full blur-3xl pointer-events-none" />

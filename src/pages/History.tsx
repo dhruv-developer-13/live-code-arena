@@ -1,6 +1,7 @@
 import { Clock, Swords, ChevronRight, SlidersHorizontal, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Header } from "@/components/Header";
 import { cn } from "@/lib/utils";
 import { PageBackground } from "@/components/PageBackground";
@@ -193,6 +194,10 @@ export default function History() {
               <p className="text-xs text-muted-foreground mt-0.5">{ALL_BATTLES.length} battles recorded</p>
             </div>
           </div>
+          <Badge variant="outline" className="text-[10px] font-semibold gap-1.5 border-emerald-500/30 text-success bg-emerald-500/8 px-2.5 py-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            Battle History
+          </Badge>
         </div>
 
         {/* ── Summary Stats ────────────────────────────────────── */}
