@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Header } from "@/components/Header";
-import { useUser } from "@clerk/react";
+import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageBackground } from "@/components/PageBackground";
 import {
@@ -158,14 +158,10 @@ function MyRankCard({ stats }: { stats: LeaderboardEntry }) {
 //  MAIN 
 
 export default function Leaderboard() {
-  const { user } = useUser();
+  const { user } = useAuth();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
 
-  const myUsername =
-    user?.username ||
-    user?.fullName ||
-    user?.primaryEmailAddress?.emailAddress?.split("@")[0] ||
-    "You";
+  const myUsername = user?.username || "You";
   const myStats: LeaderboardEntry = { ...MY_STATS, username: myUsername };
 
   const entries = DATA_BY_FILTER[timeFilter];

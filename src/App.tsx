@@ -5,7 +5,7 @@ import BattleArena from "./pages/Arena";
 import HomePage from "./pages/DashBoard";
 import LeaderboardPage from "./pages/Leaderboard";
 import WaitingRoom from "./pages/Waitingroom";
-import { useAuth } from "@clerk/react";
+import { useAuth } from "@/context/AuthContext";
 import BattleRoom from "./pages/Lobby";
 import BattleHistory from "./pages/History";
 import Results from "./pages/Results";
@@ -13,25 +13,27 @@ import LandingPage from "./pages/LandingPage";
 import SignInPage from "./auth/SignInPage";
 import SignUpPage from "./auth/SignUpPage";
 import SSOCallback from "./auth/SSOCallBack";
+import { AuthProvider } from "./context/AuthContext";
 
 
 const ProtectedRoute = ({ children }: { children: ReactNode }) => {
-  const { isSignedIn, isLoaded } = useAuth();
+  const { user, isLoading } = useAuth();
   
-  if (!isLoaded) return null; // wait for Clerk to initialize
-  if (!isSignedIn) return <Navigate to="/landing" replace />;
+  if (isLoading) return null;
+  if (!user) return <Navigate to="/landing" replace />;
   return <>{children}</>;
 };
 
 const SignedOutOnlyRoute = ({ children }: { children: ReactNode }) => {
-  const { isSignedIn } = useAuth();
-  if (isSignedIn) return <Navigate to="/" replace />;
+  const { user, isLoading } = useAuth();
+  if (isLoading) return null;
+  if (user) return <Navigate to="/" replace />;
   return <>{children}</>;
 };
 
 export default function App() {
   return (
-    <>
+    <AuthProvider>
       <Toaster richColors position="top-right" />
       <Routes>
         <Route path="/sign-in/*" element={<SignedOutOnlyRoute><SignInPage /></SignedOutOnlyRoute>} />
@@ -48,6 +50,6 @@ export default function App() {
         <Route path="/results/:roomCode" element={<ProtectedRoute><Results /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </>
+    </AuthProvider>
   );
 }

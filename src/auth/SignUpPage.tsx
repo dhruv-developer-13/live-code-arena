@@ -1,100 +1,33 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
-import { useClerk } from "@clerk/react";
-import { useSignUp } from "@clerk/react/legacy";
-import { Swords, Eye, EyeOff, ArrowRight, Github } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { Swords, Eye, EyeOff, ArrowRight } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 
-function getLoadingMessage(
-  loading: boolean,
-  step: "form" | "verify",
-  oauthLoading: null | "oauth_github" | "oauth_google",
-) {
-  if (oauthLoading === "oauth_github") return "Connecting to GitHub...";
-  if (oauthLoading === "oauth_google") return "Connecting to Google...";
-  if (!loading) return null;
-  if (step === "verify") return "Verifying your code...";
-  return "Creating your account...";
-}
-
 export default function SignUp() {
-  const { signUp, isLoaded } = useSignUp();
-  const { setActive } = useClerk();
+  const { register } = useAuth();
   const navigate = useNavigate();
 
-  const [step, setStep]         = useState<"form" | "verify">("form");
   const [username, setUsername] = useState("");
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
-  const [code, setCode]         = useState("");
   const [loading, setLoading]   = useState(false);
-  const [oauthLoading, setOauthLoading] = useState<null | "oauth_github" | "oauth_google">(null);
   const [error, setError]       = useState("");
-  const isAuthInProgress = loading || oauthLoading !== null;
-  const loadingMessage = getLoadingMessage(loading, step, oauthLoading);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isLoaded || !signUp) return;
     setLoading(true);
     setError("");
     try {
-      await signUp.create({ username, emailAddress: email, password });
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-      setStep("verify");
+      await register(username, email, password);
+      navigate("/");
     } catch (err: unknown) {
-      const firstError =
-        typeof err === "object" && err !== null && "errors" in err && Array.isArray((err as { errors?: unknown[] }).errors)
-          ? (err as { errors: Array<{ longMessage?: string; message?: string }> }).errors[0]
-          : undefined;
-      setError(firstError?.longMessage ?? firstError?.message ?? "Something went wrong.");
+      const message = err instanceof Error ? err.message : "Something went wrong.";
+      setError(message);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isLoaded || !signUp) return;
-    setLoading(true);
-    setError("");
-    try {
-      const result = await signUp.attemptEmailAddressVerification({ code });
-      if (result.status === "complete") {
-        await setActive({ session: result.createdSessionId });
-        navigate("/");
-      }
-    } catch (err: unknown) {
-      const firstError =
-        typeof err === "object" && err !== null && "errors" in err && Array.isArray((err as { errors?: unknown[] }).errors)
-          ? (err as { errors: Array<{ longMessage?: string; message?: string }> }).errors[0]
-          : undefined;
-      setError(firstError?.longMessage ?? firstError?.message ?? "Invalid code.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleOAuth = async (strategy: "oauth_github" | "oauth_google") => {
-    if (!isLoaded || !signUp) return;
-    setOauthLoading(strategy);
-    setError("");
-    try {
-      await signUp.authenticateWithRedirect({
-        strategy,
-        redirectUrl: "/sso-callback",
-        redirectUrlComplete: "/",
-      });
-    } catch (err: unknown) {
-      const firstError =
-        typeof err === "object" && err !== null && "errors" in err && Array.isArray((err as { errors?: unknown[] }).errors)
-          ? (err as { errors: Array<{ longMessage?: string; message?: string }> }).errors[0]
-          : undefined;
-      setError(firstError?.longMessage ?? firstError?.message ?? "OAuth sign-up failed.");
-    } finally {
-      setOauthLoading(null);
     }
   };
 
@@ -104,7 +37,7 @@ export default function SignUp() {
       style={{ fontFamily: "'Figtree', sans-serif" }}
     >
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#18181b_1px,transparent_1px),linear-gradient(to_bottom,#18181b_1px,transparent_1px)] bg-[size:64px_64px] opacity-30" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#18181b_1px,transparent_1px),linear_gradient(to_bottom,#18181b_1px,transparent_1px)] bg-[size:64px_64px] opacity-30" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_0%,rgba(16,185,129,0.07),transparent)]" />
       </div>
 
@@ -127,238 +60,107 @@ export default function SignUp() {
           </span>
         </Link>
 
-        {step === "form" ? (
-          <motion.div key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <div className="rounded-2xl border border-border bg-card/60 p-8">
-              <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Syne', sans-serif" }}>
-                Create account
-              </h1>
-              <p className="text-sm text-muted-foreground mb-7">
-                Already have one?{" "}
-                <Link to="/sign-in" className="text-emerald-400 hover:text-emerald-300 transition-colors">
-                  Sign in
-                </Link>
-              </p>
+        <motion.div key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <div className="rounded-2xl border border-border bg-card/60 p-8">
+            <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Syne', sans-serif" }}>
+              Create account
+            </h1>
+            <p className="text-sm text-muted-foreground mb-7">
+              Already have one?{" "}
+              <Link to="/sign-in" className="text-emerald-400 hover:text-emerald-300 transition-colors">
+                Sign in
+              </Link>
+            </p>
 
-              {/* OAuth */}
-              <div className="grid grid-cols-2 gap-2 mb-5">
-                <button
-                  type="button"
-                  onClick={() => handleOAuth("oauth_github")}
-                  disabled={isAuthInProgress || !isLoaded}
-                  className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-border bg-card hover:bg-secondary text-sm font-medium text-foreground transition-colors"
-                >
-                  {oauthLoading === "oauth_github" ? (
-                    <>
-                      <Spinner className="size-4" />
-                      Connecting...
-                    </>
-                  ) : (
-                    <>
-                      <Github className="h-4 w-4" />
-                      GitHub
-                    </>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleOAuth("oauth_google")}
-                  disabled={isAuthInProgress || !isLoaded}
-                  className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-border bg-card hover:bg-secondary text-sm font-medium text-foreground transition-colors"
-                >
-                  {oauthLoading === "oauth_google" ? (
-                    <>
-                      <Spinner className="size-4" />
-                      Connecting...
-                    </>
-                  ) : (
-                    <>
-                      <svg className="h-4 w-4" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                      </svg>
-                      Google
-                    </>
-                  )}
-                </button>
-              </div>
+            {loading && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-4 flex items-center gap-2 text-xs text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2"
+              >
+                <Spinner className="size-3.5" />
+                <span>Creating your account...</span>
+              </motion.div>
+            )}
 
-              <div className="flex items-center gap-3 mb-5">
-                <div className="flex-1 h-px bg-border" />
-                <span className="text-xs text-muted-foreground">or</span>
-                <div className="flex-1 h-px bg-border" />
-              </div>
-
-              {loadingMessage && (
-                <motion.div
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mb-4 flex items-center gap-2 text-xs text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2"
-                >
-                  <Spinner className="size-3.5" />
-                  <span>{loadingMessage}</span>
-                </motion.div>
-              )}
-
-              <form onSubmit={handleSignUp} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Username</label>
-                  <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-mono">@</span>
-                    <input
-                      type="text"
-                      value={username}
-                      onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
-                      placeholder="your_handle"
-                      disabled={isAuthInProgress}
-                      required
-                      minLength={3}
-                      className="w-full pl-8 pr-3.5 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground font-mono focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Email</label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    disabled={isAuthInProgress}
-                    required
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Password</label>
-                  <div className="relative">
-                    <input
-                      type={showPass ? "text" : "password"}
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      disabled={isAuthInProgress}
-                      required
-                      minLength={8}
-                      className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPass(p => !p)}
-                      disabled={isAuthInProgress}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                {error && (
-                  <motion.p
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-lg px-3 py-2"
-                  >
-                    {error}
-                  </motion.p>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={isAuthInProgress || !isLoaded}
-                  className="group w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm transition-all shadow-lg shadow-emerald-500/20 hover:-translate-y-0.5"
-                >
-                  {loading
-                    ? <><Spinner className="size-4" />Creating account...</>
-                    : <>Create account <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" /></>
-                  }
-                </button>
-              </form>
-            </div>
-          </motion.div>
-
-        ) : (
-
-          <motion.div
-            key="verify"
-            initial={{ opacity: 0, x: 16 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <div className="rounded-2xl border border-border bg-card/60 p-8">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-5">
-                <Swords className="h-5 w-5 text-emerald-400" />
-              </div>
-              <h1 className="text-2xl font-bold tracking-tight mb-1" style={{ fontFamily: "'Syne', sans-serif" }}>
-                Check your email
-              </h1>
-              <p className="text-sm text-muted-foreground mb-7">
-                We sent a 6-digit code to{" "}
-                <span className="text-foreground font-mono text-xs">{email}</span>
-              </p>
-
-              {loadingMessage && (
-                <motion.div
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mb-4 flex items-center gap-2 text-xs text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2"
-                >
-                  <Spinner className="size-3.5" />
-                  <span>{loadingMessage}</span>
-                </motion.div>
-              )}
-
-              <form onSubmit={handleVerify} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Verification code</label>
+            <form onSubmit={handleSignUp} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Username</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-mono">@</span>
                   <input
                     type="text"
-                    value={code}
-                    onChange={e => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    placeholder="000000"
-                    disabled={isAuthInProgress}
-                    maxLength={6}
+                    value={username}
+                    onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+                    placeholder="your_handle"
+                    disabled={loading}
                     required
-                    className="w-full px-4 py-3 rounded-xl border border-border bg-background text-xl text-foreground placeholder:text-muted-foreground font-mono tracking-[0.5em] text-center focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
+                    minLength={3}
+                    className="w-full pl-8 pr-3.5 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground font-mono focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
                   />
                 </div>
+              </div>
 
-                {error && (
-                  <motion.p
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-lg px-3 py-2"
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  disabled={loading}
+                  required
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Password</label>
+                <div className="relative">
+                  <input
+                    type={showPass ? "text" : "password"}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    disabled={loading}
+                    required
+                    minLength={8}
+                    className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPass(p => !p)}
+                    disabled={loading}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    {error}
-                  </motion.p>
-                )}
+                    {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
 
-                <button
-                  type="submit"
-                  disabled={isAuthInProgress || code.length < 6}
-                  className="group w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm transition-all shadow-lg shadow-emerald-500/20 hover:-translate-y-0.5"
+              {error && (
+                <motion.p
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-lg px-3 py-2"
                 >
-                  {loading
-                    ? <><Spinner className="size-4" />Verifying...</>
-                    : <>Verify & continue <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" /></>
-                  }
-                </button>
-              </form>
+                  {error}
+                </motion.p>
+              )}
 
               <button
-                onClick={() => { setStep("form"); setError(""); setCode(""); }}
-                disabled={isAuthInProgress}
-                className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors mt-5"
+                type="submit"
+                disabled={loading}
+                className="group w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm transition-all shadow-lg shadow-emerald-500/20 hover:-translate-y-0.5"
               >
-                ← Back
+                {loading
+                  ? <><Spinner className="size-4" />Creating account...</>
+                  : <>Create account <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" /></>
+                }
               </button>
-            </div>
-          </motion.div>
-        )}
+            </form>
+          </div>
+        </motion.div>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
           By continuing you agree to our{" "}

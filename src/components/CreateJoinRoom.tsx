@@ -1,17 +1,14 @@
 import { useState } from "react";
 import { Plus, LogIn } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useUser } from "@clerk/react";
+import { useAuth } from "@/context/AuthContext";
 
 export function CreateJoinRoom() {
   const navigate = useNavigate();
-  const { user } = useUser();
+  const { user } = useAuth();
   const [roomInput, setRoomInput] = useState("");
 
-  const username =
-    user?.username ||
-    user?.primaryEmailAddress?.emailAddress?.split("@")[0] ||
-    "player";
+  const username = user?.username || "player";
 
   const createRoom = () => {
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();

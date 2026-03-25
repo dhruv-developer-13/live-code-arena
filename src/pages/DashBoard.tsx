@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { useUser } from "@clerk/react";
+import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { PageBackground } from "@/components/PageBackground";
 
@@ -114,11 +114,11 @@ function BattleRow({ battle }: { battle: typeof RECENT_BATTLES[0] }) {
 //  MAIN COMPONENT 
 
 export default function Dashboard() {
-  const { user } = useUser();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
-  const userName    = user?.fullName || user?.username || "Player";
-  const userAvatar  = user?.imageUrl || null;
+  const userName    = user?.username || "Player";
+  const userAvatar  = null;
   const userInitial = userName[0]?.toUpperCase() ?? "P";
 
   const wins        = RECENT_BATTLES.filter(b => b.result === "win").length;

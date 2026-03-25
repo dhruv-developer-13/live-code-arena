@@ -1,5 +1,12 @@
-import { AuthenticateWithRedirectCallback } from "@clerk/react";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function SSOCallback() {
-  return <AuthenticateWithRedirectCallback />;
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    navigate("/sign-in");
+  }, [navigate]);
+
+  return null;
 }

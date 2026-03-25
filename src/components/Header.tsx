@@ -1,11 +1,13 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Show, UserButton } from "@clerk/react";
+import { useAuth } from "@/context/AuthContext";
 import { ThemeToggleButton } from "@/components/ThemeToggleButton";
+import { LogOut } from "lucide-react";
 
 
 export function Header() {
   const location = useLocation();
+  const { user, logout } = useAuth();
 
 const navLinks = [
   { label: "Home", href: "/" },
@@ -48,9 +50,22 @@ const navLinks = [
           <ThemeToggleButton />
 
           {/* Profile button */}
-          <Show when="signed-in" fallback={<a href="/sign-in">Sign In</a>}>
-            <UserButton />
-          </Show>
+          {user ? (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-foreground">{user.username}</span>
+              <button
+                onClick={logout}
+                className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                aria-label="Sign out"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <Link to="/sign-in" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              Sign In
+            </Link>
+          )}
 
         </div>
       </div>

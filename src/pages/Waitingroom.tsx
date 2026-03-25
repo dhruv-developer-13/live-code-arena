@@ -4,7 +4,7 @@ import { Copy, Check, Loader2, Swords, LogOut, Users, Shield, ShieldAlert, Zap, 
 import { Header } from "@/components/Header";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { useUser } from "@clerk/react";
+import { useAuth } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { io, Socket } from "socket.io-client";
@@ -26,16 +26,16 @@ const ANTI_CHEAT_RULES = [
 ];
 
 export default function WaitingRoom() {
-  const { user } = useUser();
+  const { user } = useAuth();
   const { roomCode } = useParams<{ roomCode: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   // ── Who am I? ──────────────────────────────────────────────────────────────
   // If player 2 joined via code, their username is in the URL as ?username=xxx
-  // If player 1 created the room, we use Clerk directly.
-  const clerkName     = user?.fullName || user?.firstName || user?.username || "Player";
-  const clerkUsername = user?.username || user?.primaryEmailAddress?.emailAddress?.split("@")[0] || "player";
+  // If player 1 created the room, we use the auth context.
+  const clerkName     = user?.username || "Player";
+  const clerkUsername = user?.username || "player";
 
   // role: "host" = created the room, "guest" = joined via code
   const role              = searchParams.get("role") ?? "host";
