@@ -42,12 +42,11 @@ export default function App() {
         <Route path="/landing" element={<SignedOutOnlyRoute><LandingPage /></SignedOutOnlyRoute>} />
         <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
         <Route path="/leaderboard" element={<ProtectedRoute><LeaderboardPage /></ProtectedRoute>} />
-        <Route path="/battle" element={<ProtectedRoute><BattleArena /></ProtectedRoute>} />
-        <Route path="/battle/:roomCode" element={<ProtectedRoute><BattleArena /></ProtectedRoute>} />
-        <Route path="/waiting/:roomCode" element={<ProtectedRoute><WaitingRoom /></ProtectedRoute>} />
         <Route path="/battle-room" element={<ProtectedRoute><BattleRoom /></ProtectedRoute>} />
+        <Route path="/waiting/:battleId" element={<ProtectedRoute><WaitingRoom /></ProtectedRoute>} />
+        <Route path="/arena/:battleId" element={<ProtectedRoute><BattleArena /></ProtectedRoute>} />
+        <Route path="/results/:battleId" element={<ProtectedRoute><Results /></ProtectedRoute>} />
         <Route path="/history" element={<ProtectedRoute><BattleHistory /></ProtectedRoute>} />
-        <Route path="/results/:roomCode" element={<ProtectedRoute><Results /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>

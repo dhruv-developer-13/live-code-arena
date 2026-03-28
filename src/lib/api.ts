@@ -47,3 +47,126 @@ export const authApi = {
   login: (data: { username: string; password: string }) =>
     api.post<AuthResponse>("/auth/login", data),
 };
+
+export interface BattleCreateResponse {
+  battleId: string;
+  roomCode: string;
+}
+
+export interface BattleJoinResponse {
+  battleId: string;
+}
+
+export interface RunResult {
+  passed: boolean;
+  input: string;
+  expectedOutput: string;
+  actualOutput: string;
+  executionTimeMs: number;
+  memoryUsedMb: number;
+}
+
+export interface SubmitResult {
+  passed: number;
+  total: number;
+  points: number;
+  multiplier: number;
+}
+
+export interface SampleCase {
+  input: string;
+  expectedOutput: string;
+  testCaseNumber: number;
+}
+
+export interface Question {
+  id: string;
+  title: string;
+  description: string;
+  difficulty: "EASY" | "MEDIUM" | "HARD";
+  inputFormat: string;
+  outputFormat: string;
+  constraints: string;
+  tags: string[];
+  sampleCases: SampleCase[];
+}
+
+export interface BattlePlayer {
+  id: string;
+  username: string;
+  baseScore: number;
+  aiBonus: number;
+  total: number;
+}
+
+export interface BattleResults {
+  battleId: string;
+  status: string;
+  startedAt: string;
+  endedAt: string;
+  aiReview?: string;
+  winner?: {
+    id: string;
+    username: string;
+  };
+  players: {
+    player1: BattlePlayer;
+    player2: BattlePlayer;
+  };
+  questions: Record<string, Question>;
+  submissions: {
+    id: string;
+    userId: string;
+    questionId: string;
+    question: { id: string; title: string; difficulty: string };
+    code: string;
+    language: string;
+    testCasesPassed: number;
+    pointsEarned: number;
+    multiplierApplied: number;
+    executionTimeMs: number;
+    memoryUsedMb: number;
+    submittedAt: string;
+  }[];
+}
+
+export interface AIReviewResponse {
+  text: string;
+}
+
+export const battleApi = {
+  create: () => api.post<BattleCreateResponse>("/api/battles/create"),
+
+  join: (roomCode: string) =>
+    api.post<BattleJoinResponse>("/api/battles/join", { roomCode }),
+
+  run: (
+    battleId: string,
+    questionId: string,
+    code: string,
+    language: string
+  ) =>
+    api.post<{ results: RunResult[] }>(
+      `/api/battles/${battleId}/questions/${questionId}/run`,
+      { code, language }
+    ),
+
+  submit: (
+    battleId: string,
+    questionId: string,
+    code: string,
+    language: string
+  ) =>
+    api.post<SubmitResult>(
+      `/api/battles/${battleId}/questions/${questionId}/submit`,
+      { code, language }
+    ),
+
+  getResults: (battleId: string) =>
+    api.get<BattleResults>(`/api/battles/${battleId}/results`),
+};
+
+export const aiApi = {
+  review: (code: string, language: string) =>
+    api.post<AIReviewResponse>("/ai/review", { code, language }),
+};

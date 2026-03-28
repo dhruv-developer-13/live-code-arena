@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { api } from "@/lib/api";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Copy, Check, Loader2, Swords, LogOut, Users, Shield, ShieldAlert, Zap, Clock, ShieldCheck, Share2 } from "lucide-react";
 import { Header } from "@/components/Header";
@@ -19,37 +20,33 @@ interface Player {
 }
 
 const ANTI_CHEAT_RULES = [
-  { icon: ShieldAlert, text: "Fullscreen required throughout the battle"   },
-  { icon: Zap,         text: "Copy/paste blocked in the code editor"       },
-  { icon: Clock,       text: "Tab switching records a violation (max 3)"   },
-  { icon: ShieldCheck, text: "Right-click disabled during the match"       },
+  { icon: ShieldAlert, text: "Fullscreen required throughout the battle" },
+  { icon: Zap, text: "Copy/paste blocked in the code editor" },
+  { icon: Clock, text: "Tab switching records a violation (max 3)" },
+  { icon: ShieldCheck, text: "Right-click disabled during the match" },
 ];
 
 export default function WaitingRoom() {
   const { user } = useAuth();
-  const { roomCode } = useParams<{ roomCode: string }>();
+  const { battleId } = useParams<{ battleId: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // ── Who am I? ──────────────────────────────────────────────────────────────
-  // If player 2 joined via code, their username is in the URL as ?username=xxx
-  // If player 1 created the room, we use the auth context.
-  const clerkName     = user?.username || "Player";
+  const roomCode = searchParams.get("roomCode") || "";
+  const clerkName = user?.username || "Player";
   const clerkUsername = user?.username || "player";
 
-  // role: "host" = created the room, "guest" = joined via code
-  const role              = searchParams.get("role") ?? "host";
-  const urlUsername       = searchParams.get("username") ?? clerkUsername;
-  const isHost            = role === "host";
+  const role = searchParams.get("role") ?? "host";
+  const urlUsername = searchParams.get("username") ?? clerkUsername;
+  const isHost = role === "host";
 
-  // Unique socket-level ID: hosts are "1", guests are "2"
-  const mySocketId        = isHost ? "1" : "2";
+  const mySocketId = isHost ? "1" : "2";
   const currentPlayerName = isHost ? clerkName : urlUsername;
   const currentPlayerUsername = isHost ? clerkUsername : urlUsername;
 
-  const [copied, setCopied]       = useState(false);
+  const [copied, setCopied] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
-  const [players, setPlayers]     = useState<Player[]>([
+  const [players, setPlayers] = useState<Player[]>([
     {
       id: mySocketId,
       name: currentPlayerName,
@@ -60,38 +57,25 @@ export default function WaitingRoom() {
   ]);
 
   const socketRef = useRef<Socket | null>(null);
-  const myPlayer  = players.find((p) => p.id === mySocketId);
+  const myPlayer = players.find((p) => p.id === mySocketId);
 
-  // Keep player name in sync with Clerk (host only)
-  // cascading render error
-  
-  // useEffect(() => {
-  //   if (!isHost) return;
-  //   setPlayers((prev) =>
-  //     prev.map((p) =>
-  //       p.id === "1" ? { ...p, name: clerkName, username: clerkUsername } : p
-  //     )
-  //   );
-  // }, [clerkName, clerkUsername, isHost]);
-
-  // ── Socket ──────────────────────────────────────────────────────────────────
   useEffect(() => {
-    const socket = io("http://localhost:3000");
+    const socket = io("http://localhost:3000", {
+      auth: { token: localStorage.getItem("token") || undefined },
+    });
     socketRef.current = socket;
 
     socket.on("connect", () => {
       socket.emit("waiting_room_join", {
         roomCode,
-        userId: mySocketId,
         username: currentPlayerUsername,
       });
     });
 
-    // Someone else joined — add them as the opponent
     socket.on("opponent_joined", ({ player }: { player: { userId: string; username: string } }) => {
       const opponentId = mySocketId === "1" ? "2" : "1";
       setPlayers((prev) => {
-        if (prev.find((p) => p.id === opponentId)) return prev; // already added
+        if (prev.find((p) => p.id === opponentId)) return prev;
         return [
           ...prev,
           {
@@ -99,7 +83,7 @@ export default function WaitingRoom() {
             name: player.username,
             username: player.username,
             isReady: false,
-            isHost: !isHost, // opponent has the opposite role
+            isHost: !isHost,
           },
         ];
       });
@@ -112,6 +96,11 @@ export default function WaitingRoom() {
         prev.map((p) => (p.id === opponentId ? { ...p, isReady } : p))
       );
       if (isReady) toast("Opponent is ready!");
+      
+      // If both ready and guest, auto emit battle:join
+      if (isReady && !isHost && battleId) {
+        socket.emit("battle:join", { battleId });
+      }
     });
 
     socket.on("opponent_disconnected", () => {
@@ -120,10 +109,44 @@ export default function WaitingRoom() {
       toast.error("Opponent disconnected.");
     });
 
-    return () => { socket.disconnect(); };
-  }, [roomCode, mySocketId, currentPlayerUsername, isHost]);
+    socket.on("battle:start", () => {
+      console.log("Received battle:start, navigating to arena...");
+      if (battleId && !isStarting) {
+        setIsStarting(true);
+        navigate(`/arena/${battleId}?userId=${mySocketId}&username=${currentPlayerUsername}`);
+      }
+    });
 
-  // ── Toggle ready ────────────────────────────────────────────────────────────
+    socket.on("guest_ready_to_battle", () => {
+      console.log("Received guest_ready_to_battle");
+      if (battleId) {
+        socket.emit("battle:join", { battleId });
+      }
+    });
+
+    return () => { socket.disconnect(); };
+  }, [roomCode, mySocketId, currentPlayerUsername, isHost, battleId, navigate]);
+
+  // Polling as fallback for battle start
+  useEffect(() => {
+    if (!battleId || isStarting) return;
+    
+    const poll = setInterval(async () => {
+      try {
+        const res = await api.get(`/api/battles/${battleId}`);
+        console.log("Polling status:", res.data);
+        if (res.data.status === "ONGOING") {
+          setIsStarting(true);
+          navigate(`/arena/${battleId}?userId=${mySocketId}&username=${currentPlayerUsername}`);
+        }
+      } catch {
+        // Ignore errors, keep polling
+      }
+    }, 2000);
+
+    return () => clearInterval(poll);
+  }, [battleId, isStarting, mySocketId, currentPlayerUsername, navigate]);
+
   const toggleReady = () => {
     const newReady = !myPlayer?.isReady;
     setPlayers((prev) =>
@@ -131,21 +154,19 @@ export default function WaitingRoom() {
     );
     socketRef.current?.emit("player_ready", {
       roomCode,
-      userId: mySocketId,
       isReady: newReady,
     });
   };
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(roomCode ?? "");
+    await navigator.clipboard.writeText(roomCode);
     setCopied(true);
     toast("Room code copied!");
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleShare = async () => {
-    const message =
-      `⚔️ Live Code Arena Battle Invite\n👤 Host: ${currentPlayerUsername}\n🎯 Room Code: ${roomCode}\nThink you can beat me? 😏\nJoin the battle and prove your coding skills!`;
+    const message = `⚔️ Live Code Arena Battle Invite\n👤 Host: ${currentPlayerUsername}\n🎯 Room Code: ${roomCode}\nThink you can beat me? 😏\nJoin the battle and prove your coding skills!`;
     if (navigator.share) {
       await navigator.share({ title: "CodeArena Battle Invite", text: message });
     } else {
@@ -155,14 +176,14 @@ export default function WaitingRoom() {
   };
 
   const handleStart = async () => {
+    if (!battleId || !isHost) return; // Only host can start
     setIsStarting(true);
-    await new Promise((r) => setTimeout(r, 900));
-    navigate(`/battle/${roomCode}?userId=${mySocketId}&username=${currentPlayerUsername}`);
+    socketRef.current?.emit("battle:join", { battleId });
+    // Host will navigate when receiving battle:start
   };
 
   const allReady = players.length === 2 && players.every((p) => p.isReady);
 
-  // Sort so host always appears first
   const normalizedPlayers = players.map((p) =>
     isHost && p.id === "1" ? { ...p, name: clerkName, username: clerkUsername } : p
   );
@@ -178,7 +199,6 @@ export default function WaitingRoom() {
       <PageBackground />
       <main className="relative z-10 max-w-xl mx-auto px-6 py-12 space-y-6">
 
-        {/*  Page Header  */}
         <div className="flex items-center gap-3.5">
           <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
             <Swords className="h-4 w-4 text-emerald-500" />
@@ -189,7 +209,6 @@ export default function WaitingRoom() {
           </div>
         </div>
 
-        {/*  Room Code  */}
         <Card className="rounded-2xl gap-0 py-0 p-8 text-center space-y-4">
           <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
             Room Code
@@ -217,7 +236,6 @@ export default function WaitingRoom() {
           </p>
         </Card>
 
-        {/*  Players  */}
         <Card className="rounded-2xl overflow-hidden gap-0 py-0">
           <CardHeader className="grid-cols-[1fr_auto] grid-rows-1 items-center gap-2 px-5 py-4 border-b border-border">
             <div className="flex items-center gap-2 min-w-0">
@@ -278,7 +296,6 @@ export default function WaitingRoom() {
           </CardContent>
         </Card>
 
-        {/*  Status hint  */}
         <div className={cn(
           "text-center text-sm font-medium transition-colors",
           allReady ? "text-success" : "text-muted-foreground"
@@ -288,7 +305,6 @@ export default function WaitingRoom() {
           {allReady && "Both players ready — let's battle!"}
         </div>
 
-        {/*  Actions  */}
         <div className="flex gap-3">
           <button
             onClick={toggleReady}
@@ -307,11 +323,11 @@ export default function WaitingRoom() {
 
           <button
             onClick={handleStart}
-            disabled={!allReady || isStarting}
+            disabled={!allReady || isStarting || !isHost}
             className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm transition-all duration-200"
           >
             {isStarting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Swords className="h-4 w-4" />}
-            {isStarting ? "Starting…" : "Start Battle"}
+            {isStarting ? "Starting…" : isHost ? "Start Battle" : "Waiting for host…"}
           </button>
 
           <button
@@ -323,7 +339,6 @@ export default function WaitingRoom() {
           </button>
         </div>
 
-        {/*  Anti-cheat reminder  */}
         <Card className="rounded-2xl border-amber-500/20 bg-amber-500/[0.03]">
           <CardContent className="px-5 py-4">
             <div className="flex items-center gap-2 mb-3.5">

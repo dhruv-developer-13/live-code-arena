@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Clock, Play, Send,
-  CheckCircle2, XCircle, Circle, AlertTriangle,
+  CheckCircle2, XCircle, Circle,
   LogOut, Trophy, Zap,
   Maximize, ShieldAlert, ShieldX,
 } from "lucide-react";
@@ -11,43 +11,13 @@ import { toast } from "sonner";
 import {
   ResizablePanelGroup, ResizablePanel, ResizableHandle,
 } from "../components/ui/resizable";
-import problemsData from "../data/problems.json";
-import { runBatch, judgeResults, type JudgedResult } from "../lib/executor";
+import { useRunCode, useSubmitCode } from "../lib/queries";
 import { io, Socket } from "socket.io-client";
 import { ThemeToggleButton } from "@/components/ThemeToggleButton";
+import type { Question, RunResult, SubmitResult } from "../lib/api";
 
-interface Example { input: string; output: string; explanation?: string; }
-interface TestCase { input: string; expected: string; }
-interface Problem {
-  id: number; difficulty: "Easy" | "Medium" | "Hard";
-  title: string; description: string; inputFormat: string;
-  outputFormat: string; constraints: string; points: number;
-  examples: Example[]; testCases: TestCase[];
-}
 interface TestResult { passed: boolean; input: string; expected: string; actual: string; }
 interface Submission { time: string; problem: string; status: "AC" | "WA" | "TLE"; }
-
-async function apiFetchProblems(): Promise<Problem[]> {
-  await new Promise((r) => setTimeout(r, 500));
-  return problemsData.problems as Problem[];
-}
-
-// Points per difficulty — source of truth
-const DIFFICULTY_POINTS: Record<"Easy" | "Medium" | "Hard", number> = {
-  Easy:   100,
-  Medium: 200,
-  Hard:   300,
-};
-
-// Pick exactly one random problem per difficulty and set correct points
-function pickBattleProblems(all: Problem[]): Problem[] {
-  const pick = (diff: "Easy" | "Medium" | "Hard") => {
-    const pool = all.filter((p) => p.difficulty === diff);
-    const problem = pool[Math.floor(Math.random() * pool.length)] ?? pool[0]!;
-    return { ...problem, points: DIFFICULTY_POINTS[diff] };
-  };
-  return [pick("Easy"), pick("Medium"), pick("Hard")];
-}
 
 const TOTAL_SECONDS = 45 * 60;
 const PYTHON_STUB = `# Read input and write your solution here
@@ -59,51 +29,47 @@ const PYTHON_STUB = `# Read input and write your solution here
 const MAX_VIOLATIONS = 3;
 
 export default function BattleArena() {
-  const { roomCode = "DEMO" } = useParams<{ roomCode: string }>();
+  const { battleId = "" } = useParams<{ battleId: string }>();
   const navigate = useNavigate();
-
   const [searchParams] = useSearchParams();
   const username = searchParams.get("username") ?? "player1";
 
-  const [problems, setProblems]     = useState<Problem[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [loadError, setLoadError]   = useState<string | null>(null);
+  const [problems, setProblems] = useState<Question[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedProblem, setSelectedProblem] = useState(0);
 
-  // Per-problem code storage
   const [codes, setCodes] = useState<Record<number, string>>({ 0: PYTHON_STUB, 1: PYTHON_STUB, 2: PYTHON_STUB });
-  const code    = codes[selectedProblem] ?? PYTHON_STUB;
+  const code = codes[selectedProblem] ?? PYTHON_STUB;
   const setCode = useCallback((val: string) => {
     setCodes((prev) => ({ ...prev, [selectedProblem]: val }));
   }, [selectedProblem]);
   const editorRef = useRef<HTMLTextAreaElement>(null);
-  const codeRef   = useRef(code);
+  const codeRef = useRef(code);
   useEffect(() => { codeRef.current = code; }, [code]);
 
-  const [running, setRunning]         = useState(false);
-  const [submitting, setSubmitting]   = useState(false);
+  const [running, setRunning] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [testResults, setTestResults] = useState<TestResult[]>([]);
 
-  const [timeLeft, setTimeLeft]           = useState(TOTAL_SECONDS);
-  const [myScore, setMyScore]             = useState(0);
+  const [timeLeft, setTimeLeft] = useState(TOTAL_SECONDS);
+  const [myScore, setMyScore] = useState(0);
   const [opponentScore, setOpponentScore] = useState(0);
-  const [myProgress, setMyProgress]       = useState<Record<string, number | null>>({ Easy: null, Medium: null, Hard: null });
-  const [submissions, setSubmissions]     = useState<Submission[]>([]);
+  const [myProgress, setMyProgress] = useState<Record<string, number | null>>({ Easy: null, Medium: null, Hard: null });
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
 
   const socketRef = useRef<Socket | null>(null);
-
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
-
-  const [myScorePulse, setMyScorePulse]   = useState(false);
+  const [myScorePulse, setMyScorePulse] = useState(false);
   const [oppScorePulse, setOppScorePulse] = useState(false);
-
-  const [isFullscreen, setIsFullscreen]                 = useState(() => !!document.fullscreenElement);
+  const [isFullscreen, setIsFullscreen] = useState(() => !!document.fullscreenElement);
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
-  const [violations, setViolations]                     = useState(0);
+  const [violations] = useState(0);
   const [showViolationWarning, setShowViolationWarning] = useState(false);
-  const [violationReason, setViolationReason]           = useState("");
-  const violationsRef = useRef(0);
+  const [violationReason] = useState("");
+
+  const runMutation = useRunCode(battleId, problems[selectedProblem]?.id || "");
+  const submitMutation = useSubmitCode(battleId, problems[selectedProblem]?.id || "");
 
   const enterFullscreen = useCallback(async () => {
     try {
@@ -118,137 +84,149 @@ export default function BattleArena() {
     }
   }, []);
 
-  // ── TESTING MODE: fullscreen prompt disabled ─────────────────────────────
-  // useEffect(() => { void enterFullscreen(); }, [enterFullscreen]);
-
   useEffect(() => {
-    apiFetchProblems()
-      .then((data) => { setProblems(pickBattleProblems(data)); setLoading(false); })
-      .catch((err) => { setLoadError(err.message); setLoading(false); });
-  }, []);
-
-  const isDemoMode = roomCode === "DEMO";
-
-  useEffect(() => {
-    if (isDemoMode) return;
-    const socket = io("http://localhost:3000");
+    if (!battleId) return;
+    const socket = io("http://localhost:3000", {
+      auth: { token: localStorage.getItem("token") || undefined },
+    });
     socketRef.current = socket;
 
     socket.on("connect", () => {
-      socket.emit("join_room", { roomCode, userId: username, username });
+      socket.emit("battle:join", { battleId });
     });
+
+    socket.on("battle:start", (data: { endsAt: string; questions: { easy: Question; medium: Question; hard: Question } }) => {
+      console.log("Arena received battle:start", data);
+      const questionList = [data.questions.easy, data.questions.medium, data.questions.hard];
+      setProblems(questionList);
+      setLoading(false);
+      setTimeLeft(Math.floor((new Date(data.endsAt).getTime() - Date.now()) / 1000));
+    });
+
+    socket.on("score:update", (data: { player1Score: number; player2Score: number }) => {
+      const isPlayer1 = username === "player1" || searchParams.get("role") === "host";
+      const newMyScore = isPlayer1 ? data.player1Score : data.player2Score;
+      const newOppScore = isPlayer1 ? data.player2Score : data.player1Score;
+      setMyScore(newMyScore);
+      setOpponentScore(newOppScore);
+    });
+
     socket.on("opponent_score", ({ score }: { score: number }) => {
       setOpponentScore(score);
       setOppScorePulse(true);
       setTimeout(() => setOppScorePulse(false), 600);
     });
-    socket.on("sync_opponent_score", ({ score }: { score: number }) => {
-      setOpponentScore(score);
+
+    socket.on("battle:end", ({ cancelled }: { cancelled: boolean }) => {
+      if (cancelled) {
+        toast.error("Battle was cancelled");
+        navigate("/");
+      } else {
+        navigate(`/results/${battleId}`);
+      }
     });
+
     socket.on("opponent_disconnected", () => {
       toast.error("Opponent disconnected!");
     });
 
     return () => { socket.disconnect(); };
-  }, [roomCode, username, isDemoMode]);
-
-  const buildResultsStateRef = useRef<() => object>(() => ({}));
+  }, [battleId, navigate, username, searchParams]);
 
   useEffect(() => {
     const t = setInterval(() => {
       setTimeLeft((prev) => {
-        if (prev <= 1) { clearInterval(t); navigate(`/results/${roomCode}`, { state: buildResultsStateRef.current() }); return 0; }
+        if (prev <= 1) {
+          clearInterval(t);
+          navigate(`/results/${battleId}`);
+          return 0;
+        }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(t);
-  }, [navigate, roomCode]);
+  }, [navigate, battleId]);
 
   const formatTime = (s: number) =>
     `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
-  const elapsed = () => formatTime(TOTAL_SECONDS - timeLeft);
 
-  const deductPoints = useCallback((reason: string) => {
-    setMyScore((prev) => {
-      const next = Math.max(0, prev - 50);
-      setMyScorePulse(true);
-      setTimeout(() => setMyScorePulse(false), 600);
-      socketRef.current?.emit("score_update", { roomCode, userId: username, score: next });
-      toast.error(`-50 points`, { description: reason });
-      return next;
-    });
-  }, [roomCode, username]);
+  const currentProblem = problems[selectedProblem];
+  const difficultyOrder = ["Easy", "Medium", "Hard"] as const;
 
-  const recordViolation = useCallback((reason: string) => {
-    violationsRef.current += 1;
-    setViolations(violationsRef.current);
-    setViolationReason(reason);
-    setShowViolationWarning(true);
-    deductPoints(reason);
-    toast.error(`⚠️ Violation ${violationsRef.current}/${MAX_VIOLATIONS}`, { description: reason });
-    if (violationsRef.current >= MAX_VIOLATIONS) {
-      setTimeout(() => navigate(`/results/${roomCode}`, { state: buildResultsStateRef.current() }), 2500);
+  const handleRun = async () => {
+    if (!currentProblem || !battleId) return;
+    setRunning(true);
+    setShowResults(true);
+    try {
+      const response = await runMutation.mutateAsync({ code, language: "python" });
+      const results: RunResult[] = response.data.results;
+
+      const testResultsArray: TestResult[] = results.map((r: RunResult) => ({
+        passed: r.passed,
+        input: r.input,
+        expected: r.expectedOutput,
+        actual: r.actualOutput || "(no output)",
+      }));
+
+      setTestResults(testResultsArray);
+      toast(`Executed — ${results.filter((r: RunResult) => r.passed).length}/${results.length} passed`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      toast.error("Execution error", { description: message });
+    } finally {
+      setRunning(false);
     }
-  }, [navigate, roomCode, deductPoints]);
+  };
 
-  // Retained for quick re-enable of anti-cheat listeners in testing mode.
-  void recordViolation;
+  const handleSubmit = useCallback(async () => {
+    if (!currentProblem || !battleId) return;
+    setSubmitting(true);
 
-  // ── TESTING MODE: fullscreen enforcement disabled ────────────────────────
-  // useEffect(() => {
-  //   const onFsChange = () => {
-  //     const inFs = !!document.fullscreenElement;
-  //     setIsFullscreen(inFs);
-  //     if (!inFs && !showFullscreenPrompt) {
-  //       setShowFullscreenPrompt(true);
-  //       recordViolation("You exited fullscreen.");
-  //     }
-  //   };
-  //   document.addEventListener("fullscreenchange", onFsChange);
-  //   return () => document.removeEventListener("fullscreenchange", onFsChange);
-  // }, [recordViolation, showFullscreenPrompt]);
+    try {
+      const response = await submitMutation.mutateAsync({ code, language: "python" });
+      const result: SubmitResult = response.data;
 
-  // ── TESTING MODE: tab/window switch detection disabled ───────────────────
-  // useEffect(() => {
-  //   const onVisibilityChange = () => {
-  //     if (document.hidden) recordViolation("You switched tabs or minimized the window.");
-  //   };
-  //   const onBlur = () => {
-  //     if (!document.hidden) recordViolation("You switched to another window.");
-  //   };
-  //   document.addEventListener("visibilitychange", onVisibilityChange);
-  //   window.addEventListener("blur", onBlur);
-  //   return () => {
-  //     document.removeEventListener("visibilitychange", onVisibilityChange);
-  //     window.removeEventListener("blur", onBlur);
-  //   };
-  // }, [recordViolation]);
+      const status: "AC" | "WA" = result.passed === result.total ? "AC" : "WA";
 
-  // ── TESTING MODE: right-click block disabled ─────────────────────────────
-  // useEffect(() => {
-  //   const block = (e: MouseEvent) => e.preventDefault();
-  //   document.addEventListener("contextmenu", block);
-  //   return () => document.removeEventListener("contextmenu", block);
-  // }, []);
+      setSubmissions((prev) => [{ time: formatTime(TOTAL_SECONDS - timeLeft), problem: currentProblem.title, status }, ...prev]);
 
-  // ── TESTING MODE: screenshot/devtools block disabled ─────────────────────
-  // useEffect(() => {
-  //   const block = (e: KeyboardEvent) => {
-  //     const key = e.key.toLowerCase();
-  //     if (key === "printscreen") { e.preventDefault(); recordViolation("Screenshot attempt detected."); return; }
-  //     if (key === "f12") { e.preventDefault(); return; }
-  //     if ((e.ctrlKey || e.metaKey) && e.shiftKey && ["i", "j", "c"].includes(key)) { e.preventDefault(); return; }
-  //     if ((e.ctrlKey || e.metaKey) && ["u", "s"].includes(key)) { e.preventDefault(); return; }
-  //   };
-  //   document.addEventListener("keydown", block);
-  //   return () => document.removeEventListener("keydown", block);
-  // }, [recordViolation]);
+      if (result.points > 0) {
+        setMyScore((prev) => {
+          const next = prev + result.points;
+          setMyScorePulse(true);
+          setTimeout(() => setMyScorePulse(false), 600);
+          return next;
+        });
+        
+        const diff = currentProblem.difficulty.toLowerCase() as "easy" | "medium" | "hard";
+        setMyProgress((p) => ({ ...p, [diff]: (p[diff] || 0) + result.points }));
 
-  // ── TESTING MODE: copy/paste block disabled ──────────────────────────────
-  // const blockClipboard = useCallback((e: React.ClipboardEvent) => {
-  //   e.preventDefault();
-  //   recordViolation("Copy/paste attempt detected.");
-  // }, [recordViolation]);
+        if (status === "AC") {
+          toast.success("Accepted!", { description: `+${result.points} points` });
+        } else {
+          toast(`${result.passed}/${result.total} passed`, { description: `+${result.points} points` });
+        }
+      } else {
+        toast.error("Wrong Answer");
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      toast.error("Submit error", { description: message });
+    } finally {
+      setSubmitting(false);
+    }
+  }, [currentProblem, battleId, code, submitMutation, timeLeft]);
+
+  const acceptedIds = new Set(submissions.filter((s) => s.status === "AC").map((s) => s.problem));
+  const isCurrentAccepted = currentProblem ? acceptedIds.has(currentProblem.title) : false;
+
+  const handleSubmitAndLeave = useCallback(async () => {
+    if (currentProblem && !acceptedIds.has(currentProblem.title)) {
+      await handleSubmit();
+    }
+    navigate(`/results/${battleId}`);
+  }, [currentProblem, handleSubmit, navigate, battleId, acceptedIds]);
+
   const blockClipboard = useCallback((/*_e: React.ClipboardEvent */) => {
     // disabled for testing
   }, []);
@@ -259,134 +237,18 @@ export default function BattleArena() {
       const textarea = editorRef.current;
       if (!textarea) return;
       const start = textarea.selectionStart;
-      const end   = textarea.selectionEnd;
+      const end = textarea.selectionEnd;
       const newCode = codeRef.current.slice(0, start) + "    " + codeRef.current.slice(end);
       setCode(newCode);
       requestAnimationFrame(() => {
         textarea.selectionStart = start + 4;
-        textarea.selectionEnd   = start + 4;
+        textarea.selectionEnd = start + 4;
       });
-      return;
     }
-    // ── TESTING MODE: ctrl+c/v/x block disabled ────────────────────────────
-    // if ((e.ctrlKey || e.metaKey) && ["c", "v", "x"].includes(e.key.toLowerCase())) {
-    //   e.preventDefault();
-    //   recordViolation("Copy/paste attempt detected.");
-    // }
   }, [setCode]);
 
-  const handleSubmit = useCallback(async () => {
-    if (!problems[selectedProblem]) return;
-    setSubmitting(true);
-    const problem = problems[selectedProblem]!;
-
-    try {
-      const testCases   = problem.testCases;
-      const raw         = await runBatch({ code, testCases });
-      const judged      = judgeResults(raw, testCases);
-      const passed      = judged.filter((j: JudgedResult) => j.passed).length;
-      const total       = judged.length;
-      const scoreEarned = Math.round((passed / total) * problem.points);
-
-      const status: "AC" | "WA" | "TLE" = judged.some((j: JudgedResult) => j.status === "TLE")
-        ? "TLE"
-        : passed === total ? "AC" : "WA";
-
-      setSubmissions((prev) => [{ time: elapsed(), problem: problem.title, status }, ...prev]);
-
-      if (scoreEarned > 0) {
-        setMyScore((prev) => {
-          const next = prev + scoreEarned;
-          setMyScorePulse(true);
-          setTimeout(() => setMyScorePulse(false), 600);
-          socketRef.current?.emit("score_update", { roomCode, userId: username, score: next });
-          return next;
-        });
-        setMyProgress((p) => ({ ...p, [problem.difficulty]: scoreEarned }));
-
-        if (status === "AC") {
-          toast.success("🎉 Accepted!", { description: `+${scoreEarned} points` });
-        } else {
-          toast(`${passed}/${total} passed`, { description: `+${scoreEarned} points earned` });
-        }
-      } else if (status === "TLE") {
-        toast.error("⏱ Time Limit Exceeded", { description: "Your solution was too slow." });
-      } else {
-        toast.error("✗ Wrong Answer", { description: `0/${total} test cases passed.` });
-      }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      toast.error("Submit error", { description: message });
-    } finally {
-      setSubmitting(false);
-    }
-  }, [problems, selectedProblem, code, roomCode, username, elapsed]);
-
-  // Pre-compute accepted set (used in handleSubmitAndLeave below)
-  const acceptedIds = new Set(submissions.filter((s) => s.status === "AC").map((s) => s.problem));
-
-  // Only the 3 problems shown in the battle (Easy=0, Medium=1, Hard=2)
-  // problems is always exactly [Easy, Medium, Hard] after pickBattleProblems
-  const BATTLE_INDICES = problems.map((_, i) => i) as number[];
-
-  const buildResultsState = useCallback(() => ({
-    results: BATTLE_INDICES.map((i) => {
-      const problem = problems[i];
-      if (!problem) return null;
-      return {
-        title:        problem.title,
-        difficulty:   problem.difficulty,
-        yourScore:    myProgress[problem.difficulty] ?? 0,
-        opponentScore: 0,
-        maxScore:     problem.points,
-        testsPassed:  { you: 0, opponent: 0, total: problem.testCases.length },
-        bestTime:     { you: null, opponent: null },
-        yourCode:     codes[i] ?? "",
-      };
-    }).filter(Boolean),
-  }), [problems, myProgress, codes]);
-
-  // Keep ref in sync so the timer always has the latest version
-  useEffect(() => { buildResultsStateRef.current = buildResultsState; }, [buildResultsState]);
-
-  // Submit current problem then navigate to results
-  const handleSubmitAndLeave = useCallback(async () => {
-    if (problems[selectedProblem] && !acceptedIds?.has(problems[selectedProblem]!.title)) {
-      await handleSubmit();
-    }
-    navigate(`/results/${roomCode}`, { state: buildResultsState() });
-  }, [problems, selectedProblem, handleSubmit, navigate, roomCode, buildResultsState, acceptedIds]);
-
-  const handleRun = async () => {
-    if (!problems[selectedProblem]) return;
-    setRunning(true); setShowResults(true);
-    try {
-      const testCases = problems[selectedProblem]!.testCases;
-      const raw       = await runBatch({ code, testCases });
-      const judged    = judgeResults(raw, testCases);
-
-      const results: TestResult[] = judged.map((j: JudgedResult) => ({
-        passed:   j.passed,
-        input:    testCases[j.testCase - 1]!.input,
-        expected: j.expected,
-        actual:   j.yourOutput || "(no output)",
-      }));
-
-      setTestResults(results);
-      toast(`Executed — ${results.length} test case${results.length !== 1 ? "s" : ""} run`);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      toast.error("Execution error", { description: message });
-    } finally {
-      setRunning(false);
-    }
-  };
-
-  const isUrgent          = timeLeft < 5 * 60;
-  const currentProblem    = problems[selectedProblem];
-  const isCurrentAccepted = currentProblem ? acceptedIds.has(currentProblem.title) : false;
-  const difficultyOrder   = ["Easy", "Medium", "Hard"] as const;
-  const iLeading          = myScore >= opponentScore;
+  const isUrgent = timeLeft < 5 * 60;
+  const iLeading = myScore >= opponentScore;
 
   return (
     <div className="min-h-screen bg-background flex flex-col select-none">
@@ -407,7 +269,7 @@ export default function BattleArena() {
               <p className="flex items-center gap-2"><ShieldAlert className="h-3.5 w-3.5 text-amber-500 shrink-0" /> Right-click is disabled</p>
               <p className="flex items-center gap-2"><ShieldAlert className="h-3.5 w-3.5 text-amber-500 shrink-0" /> Copy/paste is disabled</p>
               <p className="flex items-center gap-2"><ShieldAlert className="h-3.5 w-3.5 text-amber-500 shrink-0" /> Tab switching is monitored</p>
-              <p className="flex items-center gap-2"><ShieldAlert className="h-3.5 w-3.5 text-rose-500 shrink-0" /> {MAX_VIOLATIONS} violations = disqualification</p>
+              <p className="flex items-center gap-2"><ShieldX className="h-3.5 w-3.5 text-rose-500 shrink-0" /> {MAX_VIOLATIONS} violations = disqualification</p>
             </div>
             <button onClick={enterFullscreen} className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors">
               Enter Fullscreen & Start
@@ -466,7 +328,6 @@ export default function BattleArena() {
         </div>
       )}
 
-      {/* Top Bar */}
       <div className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur-xl">
         <div className="relative flex items-center h-14 px-6">
           <div className={cn(
@@ -494,7 +355,7 @@ export default function BattleArena() {
               "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors",
               violations === 0 && "bg-emerald-500/10 border-emerald-500/20 text-success",
               violations === 1 && "bg-amber-500/10 border-amber-500/20 text-warning",
-              violations >= 2  && "bg-rose-500/10 border-rose-500/20 text-danger",
+              violations >= 2 && "bg-rose-500/10 border-rose-500/20 text-danger",
             )}>
               <ShieldAlert className="h-3.5 w-3.5" />
               {violations}/{MAX_VIOLATIONS}
@@ -536,34 +397,27 @@ export default function BattleArena() {
                   <div className="h-4 bg-muted rounded w-5/6" />
                 </div>
               )}
-              {loadError && (
-                <div className="flex flex-col items-center justify-center gap-3 h-40 text-destructive">
-                  <AlertTriangle className="h-10 w-10" />
-                  <p className="text-sm text-center font-medium">{loadError}</p>
-                </div>
-              )}
-              {!loading && !loadError && currentProblem && (
+              {!loading && currentProblem && (
                 <>
                   <div className="flex items-start justify-between gap-3">
                     <h2 className="text-lg font-bold leading-snug">{currentProblem.title}</h2>
                     <span className={cn(
                       "shrink-0 mt-0.5 px-2.5 py-0.5 rounded-full text-xs font-bold",
-                      currentProblem.difficulty === "Easy"   && "bg-emerald-500/15 text-success",
-                      currentProblem.difficulty === "Medium" && "bg-amber-500/15 text-warning",
-                      currentProblem.difficulty === "Hard"   && "bg-rose-500/15 text-danger",
-                    )}>{currentProblem.points} pts</span>
+                      currentProblem.difficulty === "EASY" && "bg-emerald-500/15 text-success",
+                      currentProblem.difficulty === "MEDIUM" && "bg-amber-500/15 text-warning",
+                      currentProblem.difficulty === "HARD" && "bg-rose-500/15 text-danger",
+                    )}>{currentProblem.difficulty}</span>
                   </div>
                   <p className="text-sm text-muted-foreground leading-relaxed">{currentProblem.description}</p>
                   <div className="space-y-3">
-                    {currentProblem.examples?.map((ex, i) => (
+                    {currentProblem.sampleCases?.map((ex, i) => (
                       <div key={i} className="rounded-xl border border-border overflow-hidden">
                         <div className="px-3 py-1.5 bg-muted/50 border-b border-border">
                           <span className="text-xs font-bold text-muted-foreground">Example {i + 1}</span>
                         </div>
                         <div className="p-3 space-y-2 font-mono text-xs">
                           <div><span className="font-bold text-foreground">Input:&nbsp;</span><span className="text-muted-foreground whitespace-pre-wrap">{ex.input}</span></div>
-                          <div><span className="font-bold text-foreground">Output:&nbsp;</span><span className="text-muted-foreground">{ex.output}</span></div>
-                          {ex.explanation && <div className="pt-1 border-t border-border/50"><span className="font-bold text-foreground">Explanation:&nbsp;</span><span className="text-muted-foreground font-sans">{ex.explanation}</span></div>}
+                          <div><span className="font-bold text-foreground">Output:&nbsp;</span><span className="text-muted-foreground">{ex.expectedOutput}</span></div>
                         </div>
                       </div>
                     ))}
@@ -698,12 +552,13 @@ export default function BattleArena() {
               <h3 className="font-bold text-sm mb-4">Your Progress</h3>
               <div className="space-y-2.5">
                 {difficultyOrder.map((diff) => {
-                  const maxPts = DIFFICULTY_POINTS[diff];
-                  const earned = myProgress[diff];
+                  const diffKey = diff.toLowerCase() as "easy" | "medium" | "hard";
+                  const maxPts = diff === "Easy" ? 100 : diff === "Medium" ? 200 : 300;
+                  const earned = myProgress[diffKey];
                   return (
                     <div key={diff} className="flex items-center justify-between">
                       <span className={cn("text-sm font-semibold", diff === "Easy" && "text-success", diff === "Medium" && "text-warning", diff === "Hard" && "text-danger")}>{diff}</span>
-                      {earned !== null
+                      {earned !== null && earned !== undefined
                         ? <span className="flex items-center gap-1.5 text-emerald-500 text-xs font-bold font-mono"><CheckCircle2 className="h-3.5 w-3.5" />{earned}/{maxPts}</span>
                         : <span className="flex items-center gap-1.5 text-muted-foreground text-xs font-mono"><Circle className="h-3.5 w-3.5" />0/{maxPts}</span>}
                     </div>
