@@ -8,8 +8,9 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { io, Socket } from "socket.io-client";
+import { type Socket } from "socket.io-client";
 import { PageBackground } from "@/components/PageBackground";
+import { connectSocket } from "@/lib/socket";
 
 interface Player {
   id: string;
@@ -60,16 +61,20 @@ export default function WaitingRoom() {
   const myPlayer = players.find((p) => p.id === mySocketId);
 
   useEffect(() => {
-    const socket = io("http://localhost:3000", {
-      auth: { token: localStorage.getItem("token") || undefined },
-    });
+    const socket = connectSocket();
     socketRef.current = socket;
 
     socket.on("connect", () => {
+      console.log("[Waitingroom] Socket connected, joining room");
       socket.emit("waiting_room_join", {
         roomCode,
         username: currentPlayerUsername,
       });
+    });
+
+    socket.on("connect_error", (err) => {
+      console.error("Socket connection error:", err.message);
+      toast.error("Connection error", { description: err.message });
     });
 
     socket.on("opponent_joined", ({ player }: { player: { userId: string; username: string } }) => {
@@ -124,7 +129,8 @@ export default function WaitingRoom() {
       }
     });
 
-    return () => { socket.disconnect(); };
+    // Don't disconnect - socket will persist to arena
+    // return () => { socket.disconnect(); };
   }, [roomCode, mySocketId, currentPlayerUsername, isHost, battleId, navigate]);
 
   // Polling as fallback for battle start

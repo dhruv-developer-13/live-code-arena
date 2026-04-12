@@ -12,9 +12,10 @@ import {
   ResizablePanelGroup, ResizablePanel, ResizableHandle,
 } from "../components/ui/resizable";
 import { useRunCode, useSubmitCode } from "../lib/queries";
-import { io, Socket } from "socket.io-client";
 import { ThemeToggleButton } from "@/components/ThemeToggleButton";
 import type { Question, RunResult, SubmitResult } from "../lib/api";
+import { getSocket, connectSocket } from "@/lib/socket";
+import { useAuth } from "@/context/AuthContext";
 
 interface TestResult { passed: boolean; input: string; expected: string; actual: string; }
 interface Submission { time: string; problem: string; status: "AC" | "WA" | "TLE"; }
@@ -31,8 +32,10 @@ const MAX_VIOLATIONS = 3;
 export default function BattleArena() {
   const { battleId = "" } = useParams<{ battleId: string }>();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const username = searchParams.get("username") ?? "player1";
+  const { user } = useAuth();
+  const userId = user?.id || "";
+  
+  const [myPlayerRole, setMyPlayerRole] = useState<"p1" | "p2" | null>(null);
 
   const [problems, setProblems] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,11 +55,12 @@ export default function BattleArena() {
   const [showResults, setShowResults] = useState(false);
   const [testResults, setTestResults] = useState<TestResult[]>([]);
 
-  const [timeLeft, setTimeLeft] = useState(TOTAL_SECONDS);
+  const [timeLeft, setTimeLeft] = useState(0);
   const [myScore, setMyScore] = useState(0);
   const [opponentScore, setOpponentScore] = useState(0);
   const [myProgress, setMyProgress] = useState<Record<string, number | null>>({ Easy: null, Medium: null, Hard: null });
   const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [questionBestScores, setQuestionBestScores] = useState<Record<string, number>>({});
 
   const socketRef = useRef<Socket | null>(null);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
@@ -67,6 +71,7 @@ export default function BattleArena() {
   const [violations] = useState(0);
   const [showViolationWarning, setShowViolationWarning] = useState(false);
   const [violationReason] = useState("");
+  const ignoreDisconnectRef = useRef(true);
 
   const runMutation = useRunCode(battleId, problems[selectedProblem]?.id || "");
   const submitMutation = useSubmitCode(battleId, problems[selectedProblem]?.id || "");
@@ -86,13 +91,23 @@ export default function BattleArena() {
 
   useEffect(() => {
     if (!battleId) return;
-    const socket = io("http://localhost:3000", {
-      auth: { token: localStorage.getItem("token") || undefined },
-    });
+    const socket = connectSocket();
     socketRef.current = socket;
 
-    socket.on("connect", () => {
+    // Handle both - already connected OR connecting now
+    if (socket.connected) {
+      console.log("[Arena] Socket already connected, joining battle");
       socket.emit("battle:join", { battleId });
+    }
+
+    socket.on("connect", () => {
+      console.log("[Arena] Socket connected, joining battle");
+      socket.emit("battle:join", { battleId });
+    });
+
+    socket.on("player:role", (data: { role: "p1" | "p2"; userId: string }) => {
+      console.log("[Arena] Received player:role", data);
+      setMyPlayerRole(data.role);
     });
 
     socket.on("battle:start", (data: { endsAt: string; questions: { easy: Question; medium: Question; hard: Question } }) => {
@@ -104,7 +119,8 @@ export default function BattleArena() {
     });
 
     socket.on("score:update", (data: { player1Score: number; player2Score: number }) => {
-      const isPlayer1 = username === "player1" || searchParams.get("role") === "host";
+      console.log("[Arena] Score update received:", data);
+      const isPlayer1 = myPlayerRole === "p1";
       const newMyScore = isPlayer1 ? data.player1Score : data.player2Score;
       const newOppScore = isPlayer1 ? data.player2Score : data.player1Score;
       setMyScore(newMyScore);
@@ -130,8 +146,28 @@ export default function BattleArena() {
       toast.error("Opponent disconnected!");
     });
 
-    return () => { socket.disconnect(); };
-  }, [battleId, navigate, username, searchParams]);
+    socket.on("battle:player_disconnected", (data: { player: string }) => {
+      console.log("Player disconnected:", data.player);
+      if (ignoreDisconnectRef.current) {
+        console.log("[Arena] Ignoring disconnect during transition period");
+        return;
+      }
+      toast.error(`Opponent (${data.player}) disconnected from battle!`);
+    });
+
+    return () => { 
+      // Don't disconnect - socket persists across pages
+      // socket.disconnect(); 
+    };
+  }, [battleId, navigate, myPlayerRole, userId]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      ignoreDisconnectRef.current = false;
+      console.log("[Arena] Now showing disconnect notifications");
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -188,24 +224,33 @@ export default function BattleArena() {
 
       const status: "AC" | "WA" = result.passed === result.total ? "AC" : "WA";
 
-      setSubmissions((prev) => [{ time: formatTime(TOTAL_SECONDS - timeLeft), problem: currentProblem.title, status }, ...prev]);
+      setSubmissions((prev) => [{ time: formatTime(timeLeft > 0 ? timeLeft : 0), problem: currentProblem.title, status }, ...prev]);
 
-      if (result.points > 0) {
-        setMyScore((prev) => {
-          const next = prev + result.points;
-          setMyScorePulse(true);
-          setTimeout(() => setMyScorePulse(false), 600);
-          return next;
-        });
+      if (result.improved) {
+        setQuestionBestScores((prev) => ({
+          ...prev,
+          [currentProblem.id]: result.points,
+        }));
+        
+        // Score is updated via socket from server, don't manually add
+        // This prevents double counting
         
         const diff = currentProblem.difficulty.toLowerCase() as "easy" | "medium" | "hard";
-        setMyProgress((p) => ({ ...p, [diff]: (p[diff] || 0) + result.points }));
+        setMyProgress((p) => ({ ...p, [diff]: (p[diff] || 0) + (result.points - (result.previousMax || 0)) }));
 
         if (status === "AC") {
-          toast.success("Accepted!", { description: `+${result.points} points` });
+          toast.success("Accepted!", { description: `+${result.points - (result.previousMax || 0)} points` });
         } else {
-          toast(`${result.passed}/${result.total} passed`, { description: `+${result.points} points` });
+          toast(`${result.passed}/${result.total} passed`, { description: `+${result.points - (result.previousMax || 0)} points` });
         }
+      } else if (result.points > 0) {
+        const currentBest = questionBestScores[currentProblem.id] || result.previousMax || 0;
+        setQuestionBestScores((prev) => ({
+          ...prev,
+          [currentProblem.id]: Math.max(currentBest, result.points),
+        }));
+        
+        toast(`${result.passed}/${result.total} passed`, { description: `Best: ${Math.max(currentBest, result.points)} pts (no improvement)` });
       } else {
         toast.error("Wrong Answer");
       }

@@ -71,6 +71,8 @@ export interface SubmitResult {
   total: number;
   points: number;
   multiplier: number;
+  previousMax: number;
+  improved: boolean;
 }
 
 export interface SampleCase {

@@ -11,6 +11,7 @@ import { PageBackground } from "@/components/PageBackground";
 import { cn } from "@/lib/utils";
 import { Card as CardContainer } from "@/components/ui/card";
 import { useBattleResults } from "@/lib/queries";
+import { useAuth } from "@/context/AuthContext";
 
 const DIFF = {
   EASY: { color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", bar: "bg-emerald-500" },
@@ -21,6 +22,7 @@ const DIFF = {
 export default function Results() {
   const { battleId } = useParams<{ battleId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const { data: battleData, isLoading, error } = useBattleResults(battleId || "");
 
@@ -69,11 +71,27 @@ export default function Results() {
   const { data: battle } = battleData;
   const { players, questions, submissions, winner, status } = battle;
 
-  const myPlayer = players.player1;
-  const opponentPlayer = players.player2;
+  // Debug logging
+  console.log("[Results] Full battle data:", JSON.stringify({ 
+    players: { p1: players.player1?.id, p2: players.player2?.id },
+    winner: winner?.id,
+    status 
+  }));
+  console.log("[Results] Current user:", user?.id);
+
+  // If user is not in the battle, we can't determine winner/loser
+  const isInBattle = user?.id === players.player1?.id || user?.id === players.player2?.id;
+  if (!isInBattle) {
+    console.log("[Results] User not in battle!");
+  }
+
+  const isPlayer1 = user?.id === players.player1?.id;
+  const myPlayer = isPlayer1 ? players.player1 : (user?.id === players.player2?.id ? players.player2 : players.player1);
+  const opponentPlayer = isPlayer1 ? players.player2 : (user?.id === players.player2?.id ? players.player1 : players.player2);
+  
   const myTotal = myPlayer?.total || 0;
   const opponentTotal = opponentPlayer?.total || 0;
-  const isWinner = winner?.id === myPlayer?.id;
+  const isWinner = isInBattle && user?.id && winner?.id && user.id === winner.id;
   const isTie = myTotal === opponentTotal && status === "COMPLETED";
   const maxPossible = 600;
 
