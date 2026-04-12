@@ -69,7 +69,31 @@ export default function Results() {
   }
 
   const { data: battle } = battleData;
-  const { players, questions, submissions, winner, status } = battle;
+  const { status, message } = battle;
+
+  if (status !== "COMPLETED") {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <Header />
+        <PageBackground />
+        <main className="relative z-10 flex items-center justify-center min-h-[80vh]">
+          <div className="flex flex-col items-center gap-4 text-center px-4">
+            <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
+            <p className="text-lg font-semibold text-foreground">Preparing Results</p>
+            <p className="text-sm text-muted-foreground max-w-xs">{message || "Computing scores and determining winner..."}</p>
+            <button
+              onClick={() => navigate("/battle-room")}
+              className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold"
+            >
+              Back to Battle
+            </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  const { players, questions, submissions, winner } = battle;
 
   // Debug logging
   console.log("[Results] Full battle data:", JSON.stringify({ 
@@ -120,10 +144,10 @@ export default function Results() {
 
       <main className="relative z-10 max-w-7xl mx-auto px-6 py-8 space-y-6">
 
-        <div className="grid lg:grid-cols-3 gap-4 items-stretch">
+        <div className="grid md:grid-cols-3 gap-4 items-stretch">
 
           <div className={cn(
-            "lg:col-span-2 rounded-2xl border p-8 flex flex-col justify-between relative overflow-hidden",
+            "md:col-span-2 rounded-2xl border p-4 sm:p-6 lg:p-8 flex flex-col justify-between relative overflow-hidden",
             isWinner ? "bg-emerald-500/5 border-emerald-500/20"
               : isTie ? "bg-amber-500/5 border-amber-500/20"
                 : "bg-rose-500/5 border-rose-500/20"
@@ -133,7 +157,7 @@ export default function Results() {
               isWinner ? "bg-emerald-500" : isTie ? "bg-amber-500" : "bg-rose-500"
             )} />
 
-            <div className="flex items-start justify-between gap-6 relative">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6 relative">
               <div>
                 <div className="flex items-center gap-3 mb-2">
                   <div className={cn(
@@ -147,7 +171,7 @@ export default function Results() {
                   <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Battle Result</span>
                 </div>
                 <h1 className={cn(
-                  "text-6xl font-black tracking-tighter leading-none mb-3",
+                  "text-4xl sm:text-5xl lg:text-6xl font-black tracking-tighter leading-none mb-3",
                   isWinner ? "text-emerald-400" : isTie ? "text-amber-400" : "text-rose-400"
                 )}>
                   {isWinner ? "Victory" : isTie ? "Tied" : "Defeat"}
@@ -159,22 +183,21 @@ export default function Results() {
                 </p>
               </div>
 
-              <div className="flex items-center gap-6 shrink-0">
+              <div className="flex flex-col sm:flex-row items-center sm:items-center gap-4 sm:gap-6 shrink-0">
                 <div className="text-center">
                   <p className="text-xs text-muted-foreground mb-1 font-medium">You</p>
                   <p className={cn(
-                    "text-5xl font-black font-mono tabular-nums",
+                    "text-4xl sm:text-5xl font-black font-mono tabular-nums",
                     isWinner ? "text-emerald-400" : isTie ? "text-foreground" : "text-rose-400"
                   )}>{myTotal}</p>
                   <p className="text-xs text-muted-foreground mt-1">/ {maxPossible}</p>
                 </div>
-                <div className="text-center">
-                  <span className="text-2xl font-black text-muted-foreground/40">—</span>
-                </div>
+                <span className="hidden sm:block text-2xl font-black text-muted-foreground/40">—</span>
+                <span className="sm:hidden text-lg font-black text-muted-foreground/40">vs</span>
                 <div className="text-center">
                   <p className="text-xs text-muted-foreground mb-1 font-medium">Opponent</p>
                   <p className={cn(
-                    "text-5xl font-black font-mono tabular-nums",
+                    "text-4xl sm:text-5xl font-black font-mono tabular-nums",
                     !isWinner && !isTie ? "text-emerald-400" : "text-foreground"
                   )}>{opponentTotal}</p>
                   <p className="text-xs text-muted-foreground mt-1">/ {maxPossible}</p>
@@ -196,14 +219,14 @@ export default function Results() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row md:flex-col gap-4">
             <CardContainer className="flex-1 flex flex-col justify-between">
               <div className="flex items-center gap-2 mb-4">
                 <Target className="h-4 w-4 text-muted-foreground" />
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Problems</span>
               </div>
               <div>
-                <p className="text-5xl font-black tabular-nums text-foreground">{solved}<span className="text-2xl text-muted-foreground font-bold">/{questionList.length}</span></p>
+                <p className="text-4xl sm:text-5xl font-black tabular-nums text-foreground">{solved}<span className="text-2xl text-muted-foreground font-bold">/{questionList.length}</span></p>
                 <div className="flex gap-1.5 mt-3">
                   {questionList.map((q, i) => (
                     <div key={i} className={cn("flex-1 h-1.5 rounded-full", DIFF[q.difficulty]?.bar || "bg-muted")} />
@@ -247,7 +270,7 @@ export default function Results() {
 
               return (
                 <CardContainer key={question.id} padding="none">
-                  <div className="flex items-center gap-4 px-6 py-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 sm:px-6 py-4">
                     <div className={cn("shrink-0 px-3 py-1 rounded-lg text-xs font-bold border", diff?.bg, diff?.border, diff?.color)}>
                       {question.difficulty}
                     </div>
@@ -262,25 +285,25 @@ export default function Results() {
                       </div>
                     </div>
 
-                    <div className="w-48 shrink-0 space-y-1.5">
+                    <div className="w-full sm:w-40 md:w-48 shrink-0 space-y-1.5">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground w-14 text-right font-mono">{myScore}</span>
+                        <span className="text-xs text-muted-foreground w-10 sm:w-14 text-right font-mono">{myScore}</span>
                         <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
                           <div className={cn("h-full rounded-full transition-all duration-700", youWon ? "bg-emerald-500" : tied ? "bg-amber-500" : "bg-rose-500")} style={{ width: `${(myScore / maxPts) * 100}%` }} />
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground w-14 text-right font-mono">{oppScore}</span>
+                        <span className="text-xs text-muted-foreground w-10 sm:w-14 text-right font-mono">{oppScore}</span>
                         <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
                           <div className={cn("h-full rounded-full transition-all duration-700", !youWon && !tied ? "bg-emerald-500" : "bg-muted-foreground/30")} style={{ width: `${(oppScore / maxPts) * 100}%` }} />
                         </div>
                       </div>
                     </div>
 
-                    <div className="shrink-0 text-right w-20">
-                      <p className="text-lg font-black font-mono">
+                    <div className="shrink-0 text-right w-16 sm:w-20">
+                      <p className="text-base sm:text-lg font-black font-mono">
                         <span className={youWon ? "text-emerald-400" : tied ? "text-foreground" : "text-rose-400"}>{myScore}</span>
-                        <span className="text-muted-foreground/40 mx-1 text-sm">·</span>
+                        <span className="text-muted-foreground/40 mx-0.5 sm:mx-1 text-sm">·</span>
                         <span className={!youWon && !tied ? "text-emerald-400" : "text-muted-foreground"}>{oppScore}</span>
                       </p>
                       <p className="text-xs text-muted-foreground">of {maxPts}</p>
@@ -292,21 +315,21 @@ export default function Results() {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-3">
           <button onClick={() => navigate("/battle-room")}
-            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition-colors">
+            className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition-colors">
             <Swords className="h-4 w-4" /> Rematch
           </button>
           <button onClick={() => navigate("/battle-room")}
-            className="flex items-center gap-2 px-6 py-3 rounded-xl border border-border bg-card hover:bg-muted text-sm font-semibold transition-colors">
+            className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-border bg-card hover:bg-muted text-sm font-semibold transition-colors">
             <Plus className="h-4 w-4" /> New Battle
           </button>
           <button onClick={handleShare}
-            className="flex items-center gap-2 px-6 py-3 rounded-xl border border-border bg-card hover:bg-muted text-sm font-semibold transition-colors">
+            className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-border bg-card hover:bg-muted text-sm font-semibold transition-colors">
             <Share2 className="h-4 w-4" /> Share Result
           </button>
           <button onClick={() => navigate("/")}
-            className="ml-auto flex items-center gap-1.5 px-6 py-3 rounded-xl border border-border bg-card hover:bg-muted text-sm text-muted-foreground hover:text-foreground font-medium transition-colors">
+            className="sm:ml-auto flex items-center justify-center gap-1.5 px-6 py-3 rounded-xl border border-border bg-card hover:bg-muted text-sm text-muted-foreground hover:text-foreground font-medium transition-colors">
             <Home className="h-4 w-4" /> Dashboard
           </button>
         </div>

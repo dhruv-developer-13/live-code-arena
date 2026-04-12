@@ -374,30 +374,30 @@ export default function BattleArena() {
       )}
 
       <div className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur-xl">
-        <div className="relative flex items-center h-14 px-6">
+        <div className="relative flex items-center h-14 px-2 sm:px-6">
           <div className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-base font-bold transition-all duration-300",
+            "flex items-center gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg font-mono text-sm sm:text-base font-bold transition-all duration-300",
             isUrgent ? "bg-destructive/15 text-destructive ring-1 ring-destructive/40 animate-pulse" : "bg-muted text-foreground"
           )}>
-            <Clock className="h-4 w-4" />
-            {formatTime(timeLeft)}
+            <Clock className="h-3.5 sm:h-4 w-3.5 sm:w-4" />
+            <span className="hidden sm:inline">{formatTime(timeLeft)}</span>
           </div>
 
-          <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-4">
-            <div className={cn("flex flex-col items-center px-4 py-1 rounded-xl transition-all duration-300", iLeading ? "bg-emerald-500/15 ring-1 ring-emerald-500/40" : "bg-muted")}>
-              <span className="text-xs text-muted-foreground font-medium leading-none mb-0.5">You</span>
-              <span className={cn("text-xl font-black font-mono tabular-nums transition-all duration-300", iLeading ? "text-emerald-500" : "text-foreground", myScorePulse && "scale-125")}>{myScore}</span>
+          <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 sm:gap-4">
+            <div className={cn("flex flex-col sm:flex-row items-center sm:gap-2 px-2 sm:px-4 py-1 rounded-xl transition-all duration-300", iLeading ? "bg-emerald-500/15 ring-1 ring-emerald-500/40" : "bg-muted")}>
+              <span className="hidden sm:block text-xs text-muted-foreground font-medium leading-none">You</span>
+              <span className={cn("text-lg sm:text-xl font-black font-mono tabular-nums transition-all duration-300", iLeading ? "text-emerald-500" : "text-foreground", myScorePulse && "scale-125")}>{myScore}</span>
             </div>
-            <span className="text-muted-foreground font-bold text-sm">vs</span>
-            <div className={cn("flex flex-col items-center px-4 py-1 rounded-xl transition-all duration-300", !iLeading ? "bg-rose-500/15 ring-1 ring-rose-500/40" : "bg-muted")}>
-              <span className="text-xs text-muted-foreground font-medium leading-none mb-0.5">Opponent</span>
-              <span className={cn("text-xl font-black font-mono tabular-nums transition-all duration-300", !iLeading ? "text-rose-500" : "text-foreground", oppScorePulse && "scale-125")}>{opponentScore}</span>
+            <span className="text-muted-foreground font-bold text-xs sm:text-sm">vs</span>
+            <div className={cn("flex flex-col sm:flex-row items-center sm:gap-2 px-2 sm:px-4 py-1 rounded-xl transition-all duration-300", !iLeading ? "bg-rose-500/15 ring-1 ring-rose-500/40" : "bg-muted")}>
+              <span className="hidden sm:block text-xs text-muted-foreground font-medium leading-none">Opponent</span>
+              <span className={cn("text-lg sm:text-xl font-black font-mono tabular-nums transition-all duration-300", !iLeading ? "text-rose-500" : "text-foreground", oppScorePulse && "scale-125")}>{opponentScore}</span>
             </div>
           </div>
 
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-1 sm:gap-2">
             <div className={cn(
-              "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors",
+              "hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors",
               violations === 0 && "bg-emerald-500/10 border-emerald-500/20 text-success",
               violations === 1 && "bg-amber-500/10 border-amber-500/20 text-warning",
               violations >= 2 && "bg-rose-500/10 border-rose-500/20 text-danger",
@@ -406,14 +406,15 @@ export default function BattleArena() {
               {violations}/{MAX_VIOLATIONS}
             </div>
             {!isFullscreen && (
-              <button onClick={enterFullscreen} className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground" aria-label="Enter fullscreen">
+              <button onClick={enterFullscreen} className="hidden sm:flex p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground" aria-label="Enter fullscreen">
                 <Maximize className="h-4 w-4" />
               </button>
             )}
             <ThemeToggleButton />
-            <button onClick={() => setShowLeaveDialog(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-600/10 hover:bg-emerald-600/20 text-success text-sm font-semibold transition-colors border border-emerald-500/20">
-              <LogOut className="h-4 w-4" />
-              Submit & Leave
+            <button onClick={() => setShowLeaveDialog(true)} className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-lg bg-emerald-600/10 hover:bg-emerald-600/20 text-success text-xs sm:text-sm font-semibold transition-colors border border-emerald-500/20">
+              <LogOut className="h-3.5 sm:h-4 w-3.5 sm:w-4" />
+              <span className="hidden sm:inline">Submit & Leave</span>
+              <span className="sm:hidden">Leave</span>
             </button>
           </div>
         </div>

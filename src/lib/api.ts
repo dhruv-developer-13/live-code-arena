@@ -104,19 +104,20 @@ export interface BattlePlayer {
 export interface BattleResults {
   battleId: string;
   status: string;
-  startedAt: string;
-  endedAt: string;
+  message?: string;
+  startedAt?: string;
+  endedAt?: string;
   aiReview?: string;
   winner?: {
     id: string;
     username: string;
   };
-  players: {
+  players?: {
     player1: BattlePlayer;
     player2: BattlePlayer;
   };
-  questions: Record<string, Question>;
-  submissions: {
+  questions?: Record<string, Question>;
+  submissions?: {
     id: string;
     userId: string;
     questionId: string;
