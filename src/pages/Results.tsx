@@ -327,7 +327,8 @@ export default function Results() {
   const myTotal = myPlayer?.total || 0;
   const opponentTotal = opponentPlayer?.total || 0;
   const isWinner = isInBattle && user?.id && winner?.id && user.id === winner.id;
-  const isTie = myTotal === opponentTotal && status === "COMPLETED";
+  // Tie: no winner AND totals are equal (consistent with backend now using total scores)
+  const isTie = !winner?.id && myTotal === opponentTotal && status === "COMPLETED";
   const maxPossible = 600;
 
   const questionList = Object.values(questions);
