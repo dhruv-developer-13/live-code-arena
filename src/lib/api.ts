@@ -93,6 +93,34 @@ export interface Question {
   sampleCases: SampleCase[];
 }
 
+export interface QuestionAnalysis {
+  timeComplexity: string;
+  spaceComplexity: string;
+  codeQuality: string;
+  improvements: string[];
+}
+
+export interface QuestionReviewData {
+  title: string;
+  difficulty: string;
+  player1: QuestionAnalysis;
+  player2: QuestionAnalysis;
+  bonusReason: string;
+}
+
+export interface PlayerReviewDetail {
+  totalBonus: number;
+  strengths: string[];
+  improvements: string[];
+}
+
+export interface AIReviewResult {
+  questions: QuestionReviewData[];
+  player1: PlayerReviewDetail;
+  player2: PlayerReviewDetail;
+  motivational: string;
+}
+
 export interface BattlePlayer {
   id: string;
   username: string;
@@ -107,7 +135,7 @@ export interface BattleResults {
   message?: string;
   startedAt?: string;
   endedAt?: string;
-  aiReview?: string;
+  aiReview?: AIReviewResult;
   winner?: {
     id: string;
     username: string;

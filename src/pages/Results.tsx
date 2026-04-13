@@ -1,10 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Trophy, Plus, Share2, Swords, Home,
   Brain, Loader2, AlertTriangle,
   CheckCircle2,
   Target, BarChart3,
+  Sparkles, ChevronDown, ChevronUp,
+  Clock, HardDrive, ThumbsUp, ArrowUpRight,
+  Quote,
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { PageBackground } from "@/components/PageBackground";
@@ -12,12 +15,199 @@ import { cn } from "@/lib/utils";
 import { Card as CardContainer } from "@/components/ui/card";
 import { useBattleResults } from "@/lib/queries";
 import { useAuth } from "@/context/AuthContext";
+import type { QuestionReviewData } from "@/lib/api";
 
 const DIFF = {
   EASY: { color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", bar: "bg-emerald-500" },
   MEDIUM: { color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20", bar: "bg-amber-500" },
   HARD: { color: "text-rose-400", bg: "bg-rose-500/10", border: "border-rose-500/20", bar: "bg-rose-500" },
 } as const;
+
+function QuestionReviewCard({ 
+  review, 
+  isMyPlayer1,
+}: { 
+  review: QuestionReviewData; 
+  isMyPlayer1: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  
+  const myAnalysis = isMyPlayer1 ? review.player1 : review.player2;
+  const oppAnalysis = isMyPlayer1 ? review.player2 : review.player1;
+
+  const diff = DIFF[review.difficulty as keyof typeof DIFF];
+
+  return (
+    <CardContainer className="overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div className={cn("px-3 py-1 rounded-lg text-xs font-bold border", diff?.bg, diff?.border, diff?.color)}>
+            {review.difficulty}
+          </div>
+          <span className="font-semibold text-foreground">{review.title}</span>
+        </div>
+        {expanded ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+      </button>
+      
+      {expanded && (
+        <div className="px-4 pb-4 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase">Your Analysis</p>
+              <div className="flex items-center gap-2 text-sm">
+                <Clock className="h-4 w-4 text-blue-400" />
+                <span className="font-mono">{myAnalysis.timeComplexity}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <HardDrive className="h-4 w-4 text-purple-400" />
+                <span className="font-mono">{myAnalysis.spaceComplexity}</span>
+              </div>
+              <p className={cn("text-xs font-medium", 
+                myAnalysis.codeQuality === "Excellent" ? "text-emerald-400" :
+                myAnalysis.codeQuality === "Good" ? "text-amber-400" : "text-rose-400"
+              )}>
+                {myAnalysis.codeQuality}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase">Opponent</p>
+              <div className="flex items-center gap-2 text-sm">
+                <Clock className="h-4 w-4 text-blue-400" />
+                <span className="font-mono">{oppAnalysis.timeComplexity}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <HardDrive className="h-4 w-4 text-purple-400" />
+                <span className="font-mono">{oppAnalysis.spaceComplexity}</span>
+              </div>
+              <p className={cn("text-xs font-medium",
+                oppAnalysis.codeQuality === "Excellent" ? "text-emerald-400" :
+                oppAnalysis.codeQuality === "Good" ? "text-amber-400" : "text-rose-400"
+              )}>
+                {oppAnalysis.codeQuality}
+              </p>
+            </div>
+          </div>
+          
+          {myAnalysis.improvements.length > 0 && (
+            <div className="bg-rose-500/5 border border-rose-500/10 rounded-lg p-3">
+              <p className="text-xs font-semibold text-rose-400 mb-2 flex items-center gap-1">
+                <ArrowUpRight className="h-3 w-3" /> Areas to Improve
+              </p>
+              <ul className="space-y-1">
+                {myAnalysis.improvements.map((imp, i) => (
+                  <li key={i} className="text-xs text-muted-foreground">• {imp}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          
+          {review.bonusReason && (
+            <p className="text-xs text-muted-foreground italic">{review.bonusReason}</p>
+          )}
+        </div>
+      )}
+    </CardContainer>
+  );
+}
+
+function ScoringBreakdown({ 
+  baseScore, 
+  aiBonus, 
+  label 
+}: { 
+  baseScore: number; 
+  aiBonus: number; 
+  label: string;
+}) {
+  return (
+    <div className="bg-muted/30 rounded-lg p-4">
+      <p className="text-xs font-semibold text-muted-foreground uppercase mb-3">{label}</p>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm text-muted-foreground">Base Score</span>
+        <span className="font-mono font-bold">{baseScore}</span>
+      </div>
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-sm text-muted-foreground flex items-center gap-1">
+          <Sparkles className="h-3 w-3 text-amber-400" /> AI Bonus
+        </span>
+        <span className="font-mono font-bold text-amber-400">+{aiBonus}</span>
+      </div>
+      <div className="h-px bg-border mb-3" />
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-semibold">Total</span>
+        <span className="text-xl font-black font-mono">{baseScore + aiBonus}</span>
+      </div>
+    </div>
+  );
+}
+
+function PlayerFeedback({ 
+  strengths, 
+  improvements, 
+  title 
+}: { 
+  strengths: string[]; 
+  improvements: string[];
+  title: string;
+}) {
+  return (
+    <div className="space-y-4">
+      <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">{title}</h3>
+      
+      {strengths.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-emerald-400 flex items-center gap-1">
+            <ThumbsUp className="h-3 w-3" /> Your Strengths
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {strengths.map((s, i) => (
+              <span key={i} className="px-2 py-1 bg-emerald-500/10 text-emerald-400 text-xs rounded-md border border-emerald-500/20">
+                {s}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {improvements.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-amber-400 flex items-center gap-1">
+            <ArrowUpRight className="h-3 w-3" /> Do Better
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {improvements.map((imp, i) => (
+              <span key={i} className="px-2 py-1 bg-amber-500/10 text-amber-400 text-xs rounded-md border border-amber-500/20">
+                {imp}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MotivationalBanner({ quote, isWinner }: { quote: string; isWinner: boolean }) {
+  return (
+    <div className={cn(
+      "rounded-2xl p-6 text-center relative overflow-hidden",
+      isWinner ? "bg-emerald-500/10 border border-emerald-500/20" : "bg-rose-500/10 border border-rose-500/20"
+    )}>
+      <div className={cn(
+        "absolute inset-0 opacity-10",
+        isWinner ? "bg-emerald-500" : "bg-rose-500"
+      )} />
+      <Quote className={cn("h-6 w-6 mx-auto mb-3", isWinner ? "text-emerald-400" : "text-rose-400")} />
+      <p className={cn("text-lg font-semibold italic", isWinner ? "text-emerald-400" : "text-rose-400")}>
+        "{quote}"
+      </p>
+      <p className="text-xs text-muted-foreground mt-2">Keep coding!</p>
+    </div>
+  );
+}
 
 export default function Results() {
   const { battleId } = useParams<{ battleId: string }>();
@@ -94,6 +284,27 @@ export default function Results() {
   }
 
   const { players, questions, submissions, winner } = battle;
+
+  if (!players || !questions) {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <Header />
+        <PageBackground />
+        <main className="relative z-10 flex items-center justify-center min-h-[80vh]">
+          <div className="flex flex-col items-center gap-4">
+            <AlertTriangle className="h-8 w-8 text-rose-500" />
+            <p className="text-sm text-muted-foreground">Invalid battle data</p>
+            <button
+              onClick={() => navigate("/")}
+              className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold"
+            >
+              Go Home
+            </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   // Debug logging
   console.log("[Results] Full battle data:", JSON.stringify({ 
@@ -257,8 +468,8 @@ export default function Results() {
           <div className="space-y-3">
             {questionList.map((question) => {
               const diff = DIFF[question.difficulty as keyof typeof DIFF];
-              const mySubmission = submissions.find(s => s.questionId === question.id && s.userId === myPlayer?.id);
-              const oppSubmission = submissions.find(s => s.questionId === question.id && s.userId === opponentPlayer?.id);
+              const mySubmission = submissions?.find(s => s.questionId === question.id && s.userId === myPlayer?.id);
+              const oppSubmission = submissions?.find(s => s.questionId === question.id && s.userId === opponentPlayer?.id);
 
               const myScore = mySubmission?.pointsEarned || 0;
               const oppScore = oppSubmission?.pointsEarned || 0;
@@ -314,6 +525,51 @@ export default function Results() {
             })}
           </div>
         </div>
+
+        {battle.aiReview && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles className="h-4 w-4 text-amber-400" />
+              <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">AI Code Review</h2>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-4">
+                <ScoringBreakdown
+                  label="Your Score"
+                  baseScore={myPlayer?.baseScore || 0}
+                  aiBonus={myPlayer?.aiBonus || 0}
+                />
+                {isInBattle && battle.aiReview && (
+                  <CardContainer className="p-4">
+                    <PlayerFeedback
+                      title="Your Feedback"
+                      strengths={(isPlayer1 ? battle.aiReview.player1.strengths : battle.aiReview.player2.strengths) ?? []}
+                      improvements={(isPlayer1 ? battle.aiReview.player1.improvements : battle.aiReview.player2.improvements) ?? []}
+                    />
+                  </CardContainer>
+                )}
+              </div>
+              
+              <div className="space-y-3">
+                {battle.aiReview?.questions?.map((review) => (
+                  <QuestionReviewCard
+                    key={review.title}
+                    review={review}
+                    isMyPlayer1={isPlayer1}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {battle.aiReview?.motivational ? (
+          <MotivationalBanner 
+            quote={battle.aiReview.motivational} 
+            isWinner={Boolean(isWinner)} 
+          />
+        ) : null}
 
         <div className="flex flex-col sm:flex-row flex-wrap gap-3">
           <button onClick={() => navigate("/battle-room")}
