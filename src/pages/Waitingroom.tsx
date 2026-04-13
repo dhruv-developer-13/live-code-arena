@@ -64,13 +64,21 @@ export default function WaitingRoom() {
     const socket = connectSocket();
     socketRef.current = socket;
 
-    socket.on("connect", () => {
-      console.log("[Waitingroom] Socket connected, joining room");
+    const joinRoom = () => {
+      console.log("[Waitingroom] Joining room:", roomCode);
       socket.emit("waiting_room_join", {
         roomCode,
         username: currentPlayerUsername,
       });
-    });
+    };
+
+    // If already connected, join immediately
+    if (socket.connected) {
+      joinRoom();
+    }
+
+    // Also join when connected
+    socket.on("connect", joinRoom);
 
     socket.on("connect_error", (err) => {
       console.error("Socket connection error:", err.message);

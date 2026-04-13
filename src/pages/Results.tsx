@@ -342,7 +342,10 @@ export default function Results() {
     }
   };
 
-  const solved = questionList.length;
+  const solved = questionList.filter((q) => {
+    const mySubmission = submissions?.find(s => s.questionId === q.id && s.userId === myPlayer?.id);
+    return mySubmission && mySubmission.pointsEarned > 0;
+  }).length;
 
   return (
     <div className="min-h-screen bg-background text-foreground">

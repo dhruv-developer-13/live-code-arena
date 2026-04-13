@@ -3,10 +3,15 @@ import { io, type Socket } from "socket.io-client";
 let socket: Socket | null = null;
 
 export function getSocket(): Socket {
-  const token = localStorage.getItem("token");
-  console.log("[socket] Initializing with token:", token ? token.substring(0, 20) + "..." : "none");
-  
-  if (!socket) {
+  if (!socket || socket.disconnected) {
+    // Always get fresh token
+    const token = localStorage.getItem("token");
+    
+    if (socket) {
+      socket.removeAllListeners();
+      socket.disconnect();
+    }
+    
     socket = io("http://localhost:3000", {
       auth: { token: token || undefined },
       autoConnect: false,
@@ -16,7 +21,7 @@ export function getSocket(): Socket {
     });
     
     socket.on("connect", () => {
-      console.log("[socket] Connected to server, socket id:", socket?.id);
+      console.log("[socket] Connected, socket id:", socket?.id);
     });
     
     socket.on("disconnect", (reason) => {
@@ -30,9 +35,10 @@ export function getSocket(): Socket {
   return socket;
 }
 
-export function connectSocket() {
+export function connectSocket(): Socket {
   const s = getSocket();
   if (!s.connected) {
+    console.log("[socket] Connecting...");
     s.connect();
   }
   return s;
