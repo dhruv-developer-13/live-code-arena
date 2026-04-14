@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   Clock, Play, Send,
   CheckCircle2, XCircle, Circle,
@@ -10,7 +10,8 @@ import CodeMirror from "@uiw/react-codemirror";
 import { python } from "@codemirror/lang-python";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { indentWithTab } from "@codemirror/commands";
-import { keymap } from "@codemirror/view";
+import { keymap, EditorView } from "@codemirror/view";
+import type { Socket } from "socket.io-client";
 import { cn } from "../lib/utils";
 import { toast } from "sonner";
 import {
@@ -19,13 +20,12 @@ import {
 import { useRunCode, useSubmitCode } from "../lib/queries";
 import { ThemeToggleButton } from "@/components/ThemeToggleButton";
 import type { Question, RunResult, SubmitResult } from "../lib/api";
-import { getSocket, connectSocket } from "@/lib/socket";
+import { connectSocket } from "@/lib/socket";
 import { useAuth } from "@/context/AuthContext";
 
 interface TestResult { passed: boolean; input: string; expected: string; actual: string; }
 interface Submission { time: string; problem: string; status: "AC" | "WA" | "TLE"; }
 
-const TOTAL_SECONDS = 45 * 60;
 const PYTHON_STUB = `# Read input and write your solution here
 # Example for Two Sum:
 # nums = list(map(int, input().split()))
@@ -33,6 +33,7 @@ const PYTHON_STUB = `# Read input and write your solution here
 
 `;
 const MAX_VIOLATIONS = 3;
+const SELECTION_BLOCK_MSG = "Selection of text is prohibited here";
 
 export default function BattleArena() {
   const { battleId = "" } = useParams<{ battleId: string }>();
@@ -70,10 +71,12 @@ export default function BattleArena() {
   const [oppScorePulse, setOppScorePulse] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(() => !!document.fullscreenElement);
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
-  const [violations] = useState(0);
+  const [violations, setViolations] = useState(0);
   const [showViolationWarning, setShowViolationWarning] = useState(false);
-  const [violationReason] = useState("");
+  const [violationReason, setViolationReason] = useState("");
   const ignoreDisconnectRef = useRef(true);
+  const lastViolationAtRef = useRef(0);
+  const lastSelectionToastAtRef = useRef(0);
 
   const runMutation = useRunCode(battleId, problems[selectedProblem]?.id || "");
   const submitMutation = useSubmitCode(battleId, problems[selectedProblem]?.id || "");
@@ -81,6 +84,7 @@ export default function BattleArena() {
   const enterFullscreen = useCallback(async () => {
     try {
       if (!document.fullscreenElement) {
+        // Anti-cheat: lock the battle UI into fullscreen for active rounds.
         await document.documentElement.requestFullscreen();
       }
       setIsFullscreen(true);
@@ -89,6 +93,31 @@ export default function BattleArena() {
       const message = err instanceof Error ? err.message : "Please allow fullscreen in your browser.";
       toast.error("Could not enter fullscreen", { description: message });
     }
+  }, []);
+
+  const exitFullscreen = useCallback(async () => {
+    try {
+      if (document.fullscreenElement) {
+        // Anti-cheat cleanup: release fullscreen when leaving the arena flow.
+        await document.exitFullscreen();
+      }
+    } catch {
+      // Ignore fullscreen exit failures and continue the battle flow.
+    } finally {
+      setIsFullscreen(false);
+      setShowFullscreenPrompt(false);
+    }
+  }, []);
+
+  const leaveBattle = useCallback(async (destination: string) => {
+    // Ensure fullscreen is exited before any post-battle navigation.
+    await exitFullscreen();
+    navigate(destination);
+  }, [exitFullscreen, navigate]);
+
+  const pulseMyScore = useCallback(() => {
+    setMyScorePulse(true);
+    setTimeout(() => setMyScorePulse(false), 500);
   }, []);
 
   useEffect(() => {
@@ -118,6 +147,8 @@ export default function BattleArena() {
       setProblems(questionList);
       setLoading(false);
       setTimeLeft(Math.floor((new Date(data.endsAt).getTime() - Date.now()) / 1000));
+      // Auto-enter fullscreen as soon as the server marks the battle as started.
+      void enterFullscreen();
     });
 
     socket.on("score:update", (data: { player1Score: number; player2Score: number }) => {
@@ -125,7 +156,12 @@ export default function BattleArena() {
       const isPlayer1 = myPlayerRole === "p1";
       const newMyScore = isPlayer1 ? data.player1Score : data.player2Score;
       const newOppScore = isPlayer1 ? data.player2Score : data.player1Score;
-      setMyScore(newMyScore);
+      setMyScore((prev) => {
+        if (prev !== newMyScore) {
+          pulseMyScore();
+        }
+        return newMyScore;
+      });
       setOpponentScore(newOppScore);
     });
 
@@ -138,9 +174,9 @@ export default function BattleArena() {
     socket.on("battle:end", ({ cancelled }: { cancelled: boolean }) => {
       if (cancelled) {
         toast.error("Battle was cancelled");
-        navigate("/");
+        void leaveBattle("/");
       } else {
-        navigate(`/results/${battleId}`);
+        void leaveBattle(`/results/${battleId}`);
       }
     });
 
@@ -161,7 +197,7 @@ export default function BattleArena() {
       // Don't disconnect - socket persists across pages
       // socket.disconnect(); 
     };
-  }, [battleId, navigate, myPlayerRole, userId]);
+  }, [battleId, navigate, myPlayerRole, userId, enterFullscreen, leaveBattle, pulseMyScore]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -176,14 +212,14 @@ export default function BattleArena() {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(t);
-          navigate(`/results/${battleId}`);
+          void leaveBattle(`/results/${battleId}`);
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(t);
-  }, [navigate, battleId]);
+  }, [battleId, leaveBattle]);
 
   const formatTime = (s: number) =>
     `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
@@ -226,7 +262,7 @@ export default function BattleArena() {
 
       const status: "AC" | "WA" = result.passed === result.total ? "AC" : "WA";
 
-      setSubmissions((prev) => [{ time: formatTime(timeLeft > 0 ? timeLeft : 0), problem: currentProblem.title, status }, ...prev]);
+      setSubmissions((prev) => [{ time: formatTime(Math.max(timeLeft, 0)), problem: currentProblem.title, status }, ...prev]);
 
       if (result.improved) {
         setQuestionBestScores((prev) => ({
@@ -262,21 +298,99 @@ export default function BattleArena() {
     } finally {
       setSubmitting(false);
     }
-  }, [currentProblem, battleId, code, submitMutation, timeLeft]);
+  }, [currentProblem, battleId, code, submitMutation, timeLeft, questionBestScores]);
 
-  const acceptedIds = new Set(submissions.filter((s) => s.status === "AC").map((s) => s.problem));
+  const registerViolation = useCallback((reason: string, deductPoints = true) => {
+    const now = Date.now();
+    // Avoid duplicate violations from blur + visibility firing together.
+    if (now - lastViolationAtRef.current < 1200) return;
+    lastViolationAtRef.current = now;
+
+    if (deductPoints) {
+      // Penalties are server-authoritative; client only reports the violation event.
+      socketRef.current?.emit("violation", { battleId, reason });
+      toast.error("Violation recorded", { description: reason });
+    }
+
+    setViolationReason(reason);
+    setShowViolationWarning(true);
+    // Track local violation count for warning/disqualification UI state.
+    setViolations((prev) => {
+      const next = prev + 1;
+      if (next >= MAX_VIOLATIONS) {
+        toast.error("Disqualified", {
+          description: "Too many violations. Auto-submitting and ending battle.",
+        });
+        setTimeout(async () => {
+          try {
+            await handleSubmit();
+          } finally {
+            void leaveBattle(`/results/${battleId}`);
+          }
+        }, 500);
+      } else if (!deductPoints) {
+        // Some anti-cheat checks are warnings only and do not deduct points.
+        toast.warning(`Warning ${next}/${MAX_VIOLATIONS}`, { description: reason });
+      } else {
+        toast.error(`Violation ${next}/${MAX_VIOLATIONS}`, { description: reason });
+      }
+      return next;
+    });
+  }, [battleId, handleSubmit, leaveBattle]);
+
+  const handleQuestionSelectionAttempt = useCallback(() => {
+    const now = Date.now();
+    if (now - lastSelectionToastAtRef.current < 1200) return;
+    const selected = globalThis.getSelection()?.toString().trim() ?? "";
+    if (!selected) return;
+    globalThis.getSelection()?.removeAllRanges();
+    lastSelectionToastAtRef.current = now;
+    toast.error(SELECTION_BLOCK_MSG);
+  }, []);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Anti-cheat: detect tab switch or app minimization.
+        registerViolation("Tab switching or window minimizing detected.");
+      }
+    };
+
+    const handleBlur = () => {
+      // Anti-cheat: detect focus leaving the battle window.
+      registerViolation("Window focus lost.");
+    };
+
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        // Anti-cheat: exiting fullscreen during battle is a violation.
+        registerViolation("Exited fullscreen mode.");
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("blur", handleBlur);
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("blur", handleBlur);
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, [registerViolation]);
+
+  const acceptedIds = useMemo(
+    () => new Set(submissions.filter((s) => s.status === "AC").map((s) => s.problem)),
+    [submissions],
+  );
   const isCurrentAccepted = currentProblem ? acceptedIds.has(currentProblem.title) : false;
 
   const handleSubmitAndLeave = useCallback(async () => {
     if (currentProblem && !acceptedIds.has(currentProblem.title)) {
       await handleSubmit();
     }
-    navigate(`/results/${battleId}`);
-  }, [currentProblem, handleSubmit, navigate, battleId, acceptedIds]);
-
-  const blockClipboard = useCallback((/*_e: React.ClipboardEvent */) => {
-    // disabled for testing
-  }, []);
+    await leaveBattle(`/results/${battleId}`);
+  }, [currentProblem, handleSubmit, battleId, acceptedIds, leaveBattle]);
 
   const isUrgent = timeLeft < 5 * 60;
   const iLeading = myScore >= opponentScore;
@@ -284,7 +398,7 @@ export default function BattleArena() {
   return (
     <div className="min-h-screen bg-background flex flex-col select-none">
 
-      {showFullscreenPrompt && (
+      {/* {showFullscreenPrompt && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-background/95 backdrop-blur-md">
           <div className="flex flex-col items-center gap-6 text-center max-w-sm mx-4">
             <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
@@ -307,9 +421,9 @@ export default function BattleArena() {
             </button>
           </div>
         </div>
-      )}
+      )} */}
 
-      {showViolationWarning && (
+      {/* {showViolationWarning && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowViolationWarning(false)} />
           <div className="relative z-10 bg-card border border-border rounded-2xl shadow-2xl p-8 w-full max-w-sm mx-4 flex flex-col items-center gap-5">
@@ -330,7 +444,7 @@ export default function BattleArena() {
             )}
           </div>
         </div>
-      )}
+      )} */}
 
       {showLeaveDialog && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center">
@@ -352,7 +466,7 @@ export default function BattleArena() {
               </button>
               <div className="flex gap-2">
                 <button onClick={() => setShowLeaveDialog(false)} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-secondary hover:bg-secondary/70 text-sm font-medium transition-colors">Stay</button>
-                <button onClick={() => navigate("/")} className="flex-1 px-4 py-2.5 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20 text-sm font-semibold transition-colors">Forfeit</button>
+                <button onClick={() => { void leaveBattle("/"); }} className="flex-1 px-4 py-2.5 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20 text-sm font-semibold transition-colors">Forfeit</button>
               </div>
             </div>
           </div>
@@ -408,7 +522,26 @@ export default function BattleArena() {
 
       <ResizablePanelGroup orientation="horizontal" className="flex-1 flex overflow-hidden">
         <ResizablePanel defaultSize="30" maxSize="30" minSize="0" collapsible collapsedSize="0">
-          <div className="h-full border-r border-border bg-card flex flex-col overflow-hidden">
+          <div
+            className="h-full border-r border-border bg-card flex flex-col overflow-hidden"
+            // onCopy={(e) => {
+            //   // Anti-cheat: block copying from the problem statement.
+            //   e.preventDefault();
+            //   registerViolation("Copying from question panel is blocked.");
+            // }}
+            // onCut={(e) => {
+            //   // Anti-cheat: block cut operations from the problem panel.
+            //   e.preventDefault();
+            //   registerViolation("Cut is blocked.");
+            // }}
+            // onMouseUp={handleQuestionSelectionAttempt}
+            // onKeyUp={handleQuestionSelectionAttempt}
+            // onContextMenu={(e) => {
+            //   // Anti-cheat: disable right-click context actions in battle mode.
+            //   e.preventDefault();
+            //   registerViolation("Right-click menu is disabled during battle.");
+            // }}
+          >
             <div className="flex border-b border-border shrink-0">
               {difficultyOrder.map((diff, i) => (
                 <button key={diff} onClick={() => setSelectedProblem(i)}
@@ -419,7 +552,7 @@ export default function BattleArena() {
               ))}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-5" style={{ userSelect: "none", WebkitUserSelect: "none" }}>
+            <div className="flex-1 overflow-y-auto p-6 space-y-5" style={{ userSelect: "text", WebkitUserSelect: "text" }}>
               {loading && (
                 <div className="flex flex-col gap-3 animate-pulse pt-4">
                   <div className="h-6 bg-muted rounded-lg w-3/4" />
@@ -505,12 +638,68 @@ export default function BattleArena() {
                     value={code}
                     height="100%"
                     theme={oneDark}
-                    extensions={[python(), keymap.of([indentWithTab])]}
+                    extensions={[
+                      python(),
+                      keymap.of([
+                        indentWithTab,
+                        // {
+                        //   key: "Mod-c",
+                        //   run: () => {
+                        //     // Anti-cheat: disable keyboard copy shortcut in editor.
+                        //     registerViolation("Copy shortcut is disabled.");
+                        //     return true;
+                        //   },
+                        // },
+                        // {
+                        //   key: "Mod-v",
+                        //   run: () => {
+                        //     // Anti-cheat: disable keyboard paste shortcut in editor.
+                        //     registerViolation("Paste shortcut is disabled.");
+                        //     return true;
+                        //   },
+                        // },
+                        // {
+                        //   key: "Mod-x",
+                        //   run: () => {
+                        //     // Anti-cheat: disable keyboard cut shortcut in editor.
+                        //     registerViolation("Cut shortcut is disabled.");
+                        //     return true;
+                        //   },
+                        // },
+                      ]),
+                      // EditorView.domEventHandlers({
+                      //   copy: (event) => {
+                      //     // Anti-cheat: block copy action from editor context menu.
+                      //     event.preventDefault();
+                      //     registerViolation("Copy is disabled in the editor.");
+                      //     return true;
+                      //   },
+                      //   cut: (event) => {
+                      //     // Anti-cheat: block cut action from editor context menu.
+                      //     event.preventDefault();
+                      //     registerViolation("Cut is disabled in the editor.");
+                      //     return true;
+                      //   },
+                      //   paste: (event) => {
+                      //     // Anti-cheat: block paste into editor during battle.
+                      //     event.preventDefault();
+                      //     registerViolation("Paste is disabled in the editor.");
+                      //     return true;
+                      //   },
+                      //   contextmenu: (event) => {
+                      //     // Anti-cheat: disable right-click menu in the coding editor.
+                      //     event.preventDefault();
+                      //     registerViolation("Right-click is disabled in the editor.");
+                      //     return true;
+                      //   },
+                      // }),
+                      EditorView.theme({
+                        ".cm-content, .cm-line, .cm-scroller": {
+                          userSelect: "text",
+                        },
+                      }),
+                    ]}
                     onChange={(value) => setCode(value)}
-                    onCopy={blockClipboard}
-                    onCut={blockClipboard}
-                    onPaste={blockClipboard}
-                    onContextMenu={(e) => e.preventDefault()}
                     className="absolute inset-0 w-full h-full text-sm"
                     basicSetup={{
                       lineNumbers: true,
