@@ -201,3 +201,75 @@ export const aiApi = {
   review: (code: string, language: string) =>
     api.post<AIReviewResponse>("/ai/review", { code, language }),
 };
+
+export interface UserStats {
+  battlesWon: number;
+  totalBattles: number;
+  winRate: number;
+  avgScore: number;
+  totalPoints: number;
+}
+
+export interface RecentBattle {
+  id: string;
+  opponent: string;
+  result: "win" | "loss";
+  myScore: number;
+  theirScore: number;
+  duration: string;
+  difficulty: string;
+  timestamp: string | null;
+}
+
+export interface BattleHistory {
+  battles: RecentBattle[];
+  stats: {
+    totalBattles: number;
+    wins: number;
+    losses: number;
+    winRate: number;
+    avgScore: number;
+  };
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  username: string;
+  score: number;
+  battlesWon: number;
+  totalBattles: number;
+  winRate: number;
+  streak?: number;
+}
+
+export interface LeaderboardStats {
+  totalPlayers: number;
+  battlesThisWeek: number;
+}
+
+export interface MyRank {
+  rank: number;
+  username: string;
+  score: number;
+  battlesWon: number;
+  totalBattles: number;
+  winRate: number;
+  streak?: number;
+}
+
+export const userApi = {
+  getStats: () => api.get<UserStats>("/api/users/me/stats"),
+  getRecentBattles: () => api.get<RecentBattle[]>("/api/users/me/recent-battles"),
+};
+
+export const historyApi = {
+  getAll: (filter?: string) =>
+    api.get<BattleHistory>("/api/history", { params: { filter } }),
+};
+
+export const leaderboardApi = {
+  getLeaderboard: (period?: string, limit?: number) =>
+    api.get<{ leaderboard: LeaderboardEntry[] }>("/api/leaderboard", { params: { period, limit } }),
+  getMyRank: () => api.get<MyRank>("/api/leaderboard/me"),
+  getStats: () => api.get<LeaderboardStats>("/api/leaderboard/stats"),
+};

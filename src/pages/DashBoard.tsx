@@ -1,4 +1,5 @@
-import { Trophy, Swords, Target, TrendingUp, Clock, Flame, ChevronRight, CheckCircle2, XCircle, ArrowUpRight, BarChart3, Zap, Star } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Trophy, Swords, Target, TrendingUp, Clock, ChevronRight, CheckCircle2, XCircle, ArrowUpRight, BarChart3, Zap, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Header } from "@/components/Header";
 import { CreateJoinRoom } from "@/components/CreateJoinRoom";
@@ -9,25 +10,8 @@ import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { PageBackground } from "@/components/PageBackground";
-
-//  MOCK DATA 
-
-const STATS = {
-  battlesWon: 47,
-  totalBattles: 82,
-  winRate: 57,
-  currentStreak: 4,
-  bestStreak: 11,
-  avgScore: 310,
-};
-
-const RECENT_BATTLES = [
-  { id: "1", opponent: "CodeMaster99", result: "win"  as const, myScore: 350, theirScore: 280, duration: "28m", timestamp: "2 hours ago",  difficulty: "Medium" },
-  { id: "2", opponent: "AlgoNinja",    result: "loss" as const, myScore: 200, theirScore: 320, duration: "35m", timestamp: "5 hours ago",  difficulty: "Hard"   },
-  { id: "3", opponent: "ByteRunner",   result: "win"  as const, myScore: 400, theirScore: 150, duration: "19m", timestamp: "Yesterday",    difficulty: "Easy"   },
-  { id: "4", opponent: "PixelDev",     result: "win"  as const, myScore: 280, theirScore: 270, duration: "41m", timestamp: "Yesterday",    difficulty: "Medium" },
-  { id: "5", opponent: "SyntaxSam",    result: "loss" as const, myScore: 180, theirScore: 350, duration: "44m", timestamp: "2 days ago",   difficulty: "Hard"   },
-];
+import { userApi } from "@/lib/api";
+import type { UserStats, RecentBattle } from "@/lib/api";
 
 //  SUBCOMPONENTS 
 
@@ -61,7 +45,7 @@ const DIFF_STYLES = {
   Hard:   "bg-rose-500/10 text-danger border-rose-500/20",
 } as const;
 
-function BattleRow({ battle }: { battle: typeof RECENT_BATTLES[0] }) {
+function BattleRow({ battle }: { battle: RecentBattle }) {
   const won = battle.result === "win";
   return (
     <div className="flex items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors group cursor-default">
@@ -113,19 +97,51 @@ function BattleRow({ battle }: { battle: typeof RECENT_BATTLES[0] }) {
 
 //  MAIN COMPONENT 
 
+const defaultStats: UserStats = { battlesWon: 0, totalBattles: 0, winRate: 0, avgScore: 0, totalPoints: 0 };
+
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [stats, setStats] = useState<UserStats>(defaultStats);
+  const [recentBattles, setRecentBattles] = useState<RecentBattle[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      userApi.getStats(),
+      userApi.getRecentBattles()
+    ]).then(([statsRes, battlesRes]) => {
+      if (statsRes.data) setStats(statsRes.data);
+      if (battlesRes.data) setRecentBattles(battlesRes.data);
+    }).catch(console.error).finally(() => setLoading(false));
+  }, []);
 
   const userName    = user?.username || "Player";
   const userAvatar  = null;
   const userInitial = userName[0]?.toUpperCase() ?? "P";
 
-  const wins        = RECENT_BATTLES.filter(b => b.result === "win").length;
-  const losses      = RECENT_BATTLES.length - wins;
-  const avgDuration = Math.round(
-    RECENT_BATTLES.reduce((a, b) => a + parseInt(b.duration), 0) / RECENT_BATTLES.length
-  );
+  const statsData = stats;
+  const battlesData = recentBattles;
+
+  const wins = battlesData.filter(b => b.result === "win").length;
+  const losses = battlesData.length - wins;
+  const avgDuration = battlesData.length > 0
+    ? Math.round(battlesData.reduce((a, b) => a + parseInt(b.duration), 0) / battlesData.length)
+    : 0;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <Header />
+        <PageBackground />
+        <main className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-8">
+          <div className="flex items-center justify-center py-20">
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -155,29 +171,15 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-
-          {/* Streak pill */}
-          <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-orange-500/20 bg-orange-500/5 w-fit">
-            <Flame className="h-4 w-4 text-orange-500" />
-            <div>
-              <p className="text-base font-bold text-foreground leading-none">{STATS.currentStreak}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">day streak</p>
-            </div>
-            <Separator orientation="vertical" className="h-8 mx-1" />
-            <div>
-              <p className="text-base font-bold text-foreground leading-none">{STATS.bestStreak}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">best ever</p>
-            </div>
-          </div>
         </div>
 
         {/*  Stats Grid  */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          <StatCard icon={Trophy}     label="Battles Won"   value={STATS.battlesWon}        accent="bg-emerald-500/10 text-success" trend="+3 this week" />
-          <StatCard icon={Swords}     label="Total Battles" value={STATS.totalBattles}       accent="bg-blue-500/10 text-info" />
-          <StatCard icon={Target}     label="Win Rate"      value={`${STATS.winRate}%`}      accent="bg-violet-500/10 text-brand" />
-          <StatCard icon={TrendingUp} label="Avg Score"     value={STATS.avgScore} sub="per match" accent="bg-amber-500/10 text-warning" />
-          <StatCard icon={Zap}        label="Best Streak"   value={`${STATS.bestStreak}d`}  accent="bg-orange-500/10 text-highlight" />
+          <StatCard icon={Trophy}     label="Battles Won"   value={statsData.battlesWon}        accent="bg-emerald-500/10 text-success" />
+          <StatCard icon={Swords}     label="Total Battles" value={statsData.totalBattles}       accent="bg-blue-500/10 text-info" />
+          <StatCard icon={Target}     label="Win Rate"      value={`${statsData.winRate}%`}      accent="bg-violet-500/10 text-brand" />
+          <StatCard icon={TrendingUp} label="Avg Score"     value={statsData.avgScore} sub="per match" accent="bg-amber-500/10 text-warning" />
+          <StatCard icon={Zap}        label="Total Points" value={statsData.totalPoints}  accent="bg-orange-500/10 text-highlight" />
         </div>
 
         {/*  Season Performance  */}
@@ -191,23 +193,23 @@ export default function Dashboard() {
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-                  {STATS.battlesWon}W
+                  {statsData.battlesWon}W
                 </span>
                 <span className="flex items-center gap-1">
                   <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />
-                  {STATS.totalBattles - STATS.battlesWon}L
+                  {statsData.totalBattles - statsData.battlesWon}L
                 </span>
               </div>
             </div>
             <div className="h-2 rounded-full bg-muted overflow-hidden">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400"
-                style={{ width: `${STATS.winRate}%` }}
+                style={{ width: `${statsData.winRate}%` }}
               />
             </div>
             <div className="flex justify-between mt-2">
-              <span className="text-xs text-success font-semibold">{STATS.winRate}% win rate</span>
-              <span className="text-xs text-muted-foreground">{STATS.totalBattles} total</span>
+              <span className="text-xs text-success font-semibold">{statsData.winRate}% win rate</span>
+              <span className="text-xs text-muted-foreground">{statsData.totalBattles} total</span>
             </div>
           </CardContent>
         </Card>
@@ -241,7 +243,7 @@ export default function Dashboard() {
                   </CardTitle>
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-muted-foreground">
-                      {wins}/{RECENT_BATTLES.length} won
+                      {wins}/{battlesData.length} won
                     </span>
                     <button
                       onClick={() => navigate("/history")}
@@ -254,9 +256,9 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="divide-y divide-border/40">
-                  {RECENT_BATTLES.map(battle => (
-                    <BattleRow key={battle.id} battle={battle} />
-                  ))}
+{battlesData.map(battle => (
+                     <BattleRow key={battle.id} battle={battle} />
+                   ))}
                 </div>
               </CardContent>
             </Card>
@@ -276,10 +278,10 @@ export default function Dashboard() {
               <CardContent className="px-5 pb-5 pt-0 space-y-4">
                 {/* W/L bar */}
                 <div className="flex gap-1.5">
-                  {RECENT_BATTLES.map(b => (
-                    <div
-                      key={b.id}
-                      title={`vs ${b.opponent} — ${b.result === "win" ? "W" : "L"}`}
+{battlesData.map(b => (
+                     <div
+                       key={b.id}
+                       title={`vs ${b.opponent} — ${b.result === "win" ? "W" : "L"}`}
                       className={cn(
                         "flex-1 h-6 rounded-md flex items-center justify-center text-[10px] font-bold",
                         b.result === "win"
@@ -328,8 +330,8 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent className="px-5 pb-5 pt-0 space-y-3.5">
                 {(["Easy", "Medium", "Hard"] as const).map(diff => {
-                  const count = RECENT_BATTLES.filter(b => b.difficulty === diff).length;
-                  const pct   = Math.round((count / RECENT_BATTLES.length) * 100);
+                  const count = battlesData.filter(b => b.difficulty === diff).length;
+                  const pct   = Math.round((count / battlesData.length) * 100);
                   const color = {
                     Easy:   "bg-emerald-500",
                     Medium: "bg-amber-500",
@@ -344,7 +346,7 @@ export default function Dashboard() {
                     <div key={diff}>
                       <div className="flex justify-between items-center mb-1.5">
                         <span className={cn("text-xs font-semibold", label)}>{diff}</span>
-                        <span className="text-xs text-muted-foreground tabular-nums">{count} / {RECENT_BATTLES.length}</span>
+                        <span className="text-xs text-muted-foreground tabular-nums">{count} / {battlesData.length}</span>
                       </div>
                       <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                         <div className={cn("h-full rounded-full", color)} style={{ width: `${pct}%` }} />

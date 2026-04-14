@@ -1,28 +1,12 @@
 import { Clock, Swords, ChevronRight, SlidersHorizontal, TrendingUp } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Header } from "@/components/Header";
 import { cn } from "@/lib/utils";
 import { PageBackground } from "@/components/PageBackground";
-
-// ─── MOCK DATA ────────────────────────────────────────────────────────────────
-// TODO: fetch from /api/battles?userId=...
-
-const ALL_BATTLES = [
-  { id: "1",  opponent: "CodeMaster99", result: "win"  as const, myScore: 350, theirScore: 280, duration: "28m", timestamp: "2 hours ago",  date: "Today",       difficulty: "Medium" },
-  { id: "2",  opponent: "AlgoNinja",    result: "loss" as const, myScore: 200, theirScore: 320, duration: "35m", timestamp: "5 hours ago",  date: "Today",       difficulty: "Hard"   },
-  { id: "3",  opponent: "ByteRunner",   result: "win"  as const, myScore: 400, theirScore: 150, duration: "19m", timestamp: "Yesterday",    date: "Yesterday",   difficulty: "Easy"   },
-  { id: "4",  opponent: "PixelDev",     result: "win"  as const, myScore: 280, theirScore: 270, duration: "41m", timestamp: "Yesterday",    date: "Yesterday",   difficulty: "Medium" },
-  { id: "5",  opponent: "SyntaxSam",    result: "loss" as const, myScore: 180, theirScore: 350, duration: "44m", timestamp: "2 days ago",   date: "2 days ago",  difficulty: "Hard"   },
-  { id: "6",  opponent: "DevStorm",     result: "win"  as const, myScore: 320, theirScore: 210, duration: "31m", timestamp: "3 days ago",   date: "3 days ago",  difficulty: "Medium" },
-  { id: "7",  opponent: "NullPointer",  result: "win"  as const, myScore: 290, theirScore: 180, duration: "27m", timestamp: "3 days ago",   date: "3 days ago",  difficulty: "Easy"   },
-  { id: "8",  opponent: "StackTrace",   result: "loss" as const, myScore: 150, theirScore: 400, duration: "43m", timestamp: "4 days ago",   date: "4 days ago",  difficulty: "Hard"   },
-  { id: "9",  opponent: "BitShifter",   result: "win"  as const, myScore: 370, theirScore: 290, duration: "33m", timestamp: "5 days ago",   date: "5 days ago",  difficulty: "Medium" },
-  { id: "10", opponent: "RecursionKid", result: "loss" as const, myScore: 220, theirScore: 310, duration: "38m", timestamp: "1 week ago",   date: "1 week ago",  difficulty: "Hard"   },
-  { id: "11", opponent: "HashMapHero",  result: "win"  as const, myScore: 410, theirScore: 200, duration: "22m", timestamp: "1 week ago",   date: "1 week ago",  difficulty: "Easy"   },
-  { id: "12", opponent: "O1Optimizer",  result: "win"  as const, myScore: 300, theirScore: 250, duration: "36m", timestamp: "2 weeks ago",  date: "2 weeks ago", difficulty: "Medium" },
-];
+import { historyApi } from "@/lib/api";
+import type { RecentBattle } from "@/lib/api";
 
 type FilterValue = "all" | "win" | "loss" | "Easy" | "Medium" | "Hard";
 
@@ -84,7 +68,7 @@ function FilterPill({ label, value, active, count, onClick }: FilterPillProps) {
 }
 
 interface BattleRowProps {
-  battle: typeof ALL_BATTLES[0];
+  battle: RecentBattle & { date: string };
 }
 
 function BattleRow({ battle }: BattleRowProps) {
@@ -142,31 +126,55 @@ function BattleRow({ battle }: BattleRowProps) {
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
+const defaultHistory = { battles: [] as RecentBattle[], stats: { totalBattles: 0, wins: 0, losses: 0, winRate: 0, avgScore: 0 } };
+
 export default function History() {
   const [activeFilter, setActiveFilter] = useState<FilterValue>("all");
+  const [history, setHistory] = useState(defaultHistory);
+  const [loading, setLoading] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
-  const filtered = ALL_BATTLES.filter(b => {
-    if (activeFilter === "win" || activeFilter === "loss") return b.result === activeFilter;
-    if (["Easy", "Medium", "Hard"].includes(activeFilter)) return b.difficulty === activeFilter;
-    return true;
-  });
+  useEffect(() => {
+    setLoading(true);
+    if (!initialized) setInitialized(true);
+    const filter = activeFilter === "all" ? undefined : activeFilter;
+    historyApi.getAll(filter).then(r => {
+      if (r.data && !('error' in r.data)) {
+        setHistory(r.data);
+      }
+    }).catch(console.error).finally(() => setLoading(false));
+  }, [activeFilter, initialized]);
 
-  const wins     = ALL_BATTLES.filter(b => b.result === "win").length;
-  const losses   = ALL_BATTLES.length - wins;
-  const winRate  = Math.round((wins / ALL_BATTLES.length) * 100);
-  const avgScore = Math.round(ALL_BATTLES.reduce((a, b) => a + b.myScore, 0) / ALL_BATTLES.length);
+  const historyData = history;
+  const stats = historyData.stats || defaultHistory.stats;
 
   const filters: { label: string; value: FilterValue; count?: number }[] = [
     { label: "All",    value: "all"    },
-    { label: "Wins",   value: "win",    count: wins   },
-    { label: "Losses", value: "loss",   count: losses },
-    { label: "Easy",   value: "Easy",   count: ALL_BATTLES.filter(b => b.difficulty === "Easy").length   },
-    { label: "Medium", value: "Medium", count: ALL_BATTLES.filter(b => b.difficulty === "Medium").length },
-    { label: "Hard",   value: "Hard",   count: ALL_BATTLES.filter(b => b.difficulty === "Hard").length   },
+    { label: "Wins",   value: "win",    count: stats.wins   },
+    { label: "Losses", value: "loss",   count: stats.losses },
+    { label: "Easy",   value: "Easy",   count: historyData.battles.filter(b => b.difficulty === "Easy").length   },
+    { label: "Medium", value: "Medium", count: historyData.battles.filter(b => b.difficulty === "Medium").length },
+    { label: "Hard",   value: "Hard",   count: historyData.battles.filter(b => b.difficulty === "Hard").length   },
   ];
 
-  // Group filtered battles by date
-  const groups = filtered.reduce<{ date: string; battles: typeof ALL_BATTLES }[]>((acc, battle) => {
+  const formatDate = (timestamp: string | null): string => {
+    if (!timestamp) return "Unknown";
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffHours < 1) return "Just now";
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 14) return "1 week ago";
+    return date.toLocaleDateString();
+  };
+
+  const battlesWithDate = (historyData?.battles || []).map(b => ({ ...b, date: formatDate(b.timestamp) }));
+  const groups = battlesWithDate.reduce<{ date: string; battles: typeof battlesWithDate }[]>((acc, battle) => {
     const last = acc[acc.length - 1];
     if (last && last.date === battle.date) {
       last.battles.push(battle);
@@ -175,6 +183,20 @@ export default function History() {
     }
     return acc;
   }, []);
+
+  if (loading && !initialized) {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <Header />
+        <PageBackground />
+        <main className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-8">
+          <div className="flex items-center justify-center py-20">
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -191,7 +213,7 @@ export default function History() {
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight">Battle History</h1>
-              <p className="text-xs text-muted-foreground mt-0.5">{ALL_BATTLES.length} battles recorded</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{stats.totalBattles} battles recorded</p>
             </div>
           </div>
           <Badge variant="outline" className="text-[10px] font-semibold gap-1.5 border-emerald-500/30 text-success bg-emerald-500/8 px-2.5 py-1">
@@ -202,10 +224,10 @@ export default function History() {
 
         {/* ── Summary Stats ────────────────────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <StatCard label="Total Battles" value={ALL_BATTLES.length} color="text-foreground" />
-          <StatCard label="Wins"          value={wins}               color="text-success" />
-          <StatCard label="Losses"        value={losses}             color="text-danger" />
-          <StatCard label="Win Rate"      value={`${winRate}%`}      color="text-brand" />
+          <StatCard label="Total Battles" value={stats.totalBattles} color="text-foreground" />
+          <StatCard label="Wins"          value={stats.wins}               color="text-success" />
+          <StatCard label="Losses"        value={stats.losses}             color="text-danger" />
+          <StatCard label="Win Rate"      value={`${stats.winRate}%`}      color="text-brand" />
         </div>
 
         {/* ── Win Rate Bar ─────────────────────────────────────── */}
@@ -219,25 +241,25 @@ export default function History() {
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  {wins}W
+                  {stats.wins}W
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-rose-500" />
-                  {losses}L
+                  {stats.losses}L
                 </span>
                 <span className="text-muted-foreground/50">·</span>
-                <span>Avg {avgScore} pts</span>
+                <span>Avg {stats.avgScore} pts</span>
               </div>
             </div>
             <div className="h-1.5 rounded-full bg-muted overflow-hidden">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all"
-                style={{ width: `${winRate}%` }}
+                className="h-full rounded-full bg-linear-to-r from-emerald-500 to-emerald-400 transition-all"
+                style={{ width: `${stats.winRate}%` }}
               />
             </div>
             <div className="flex justify-between mt-2">
-              <span className="text-xs text-success font-semibold">{winRate}% win rate</span>
-              <span className="text-xs text-muted-foreground">{ALL_BATTLES.length} battles</span>
+              <span className="text-xs text-success font-semibold">{stats.winRate}% win rate</span>
+              <span className="text-xs text-muted-foreground">{stats.totalBattles} battles</span>
             </div>
           </CardContent>
         </Card>
@@ -256,13 +278,13 @@ export default function History() {
             />
           ))}
           <span className="ml-auto text-xs text-muted-foreground tabular-nums">
-            {filtered.length} result{filtered.length !== 1 ? "s" : ""}
+            {battlesWithDate.length} result{battlesWithDate.length !== 1 ? "s" : ""}
           </span>
         </div>
 
         {/* ── Battle List ──────────────────────────────────────── */}
         <Card className="rounded-2xl border-border/60 overflow-hidden">
-          {filtered.length === 0 ? (
+          {battlesWithDate.length === 0 ? (
             <CardContent className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
               <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
                 <Swords className="h-5 w-5 opacity-40" />

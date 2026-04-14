@@ -413,7 +413,7 @@ export default function Results() {
                   <p className="text-xs text-muted-foreground mb-1 font-medium">Opponent</p>
                   <p className={cn(
                     "text-4xl sm:text-5xl font-black font-mono tabular-nums",
-                    !isWinner && !isTie ? "text-emerald-400" : "text-foreground"
+                    "text-foreground"
                   )}>{opponentTotal}</p>
                   <p className="text-xs text-muted-foreground mt-1">/ {maxPossible}</p>
                 </div>
@@ -510,7 +510,7 @@ export default function Results() {
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground w-10 sm:w-14 text-right font-mono">{oppScore}</span>
                         <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-                          <div className={cn("h-full rounded-full transition-all duration-700", !youWon && !tied ? "bg-emerald-500" : "bg-muted-foreground/30")} style={{ width: `${(oppScore / maxPts) * 100}%` }} />
+                          <div className={cn("h-full rounded-full transition-all duration-700", "bg-muted-foreground/30")} style={{ width: `${(oppScore / maxPts) * 100}%` }} />
                         </div>
                       </div>
                     </div>
@@ -519,7 +519,7 @@ export default function Results() {
                       <p className="text-base sm:text-lg font-black font-mono">
                         <span className={youWon ? "text-emerald-400" : tied ? "text-foreground" : "text-rose-400"}>{myScore}</span>
                         <span className="text-muted-foreground/40 mx-0.5 sm:mx-1 text-sm">·</span>
-                        <span className={!youWon && !tied ? "text-emerald-400" : "text-muted-foreground"}>{oppScore}</span>
+                        <span className="text-muted-foreground">{oppScore}</span>
                       </p>
                       <p className="text-xs text-muted-foreground">of {maxPts}</p>
                     </div>

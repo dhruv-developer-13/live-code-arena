@@ -1,11 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
-  Trophy, Medal, Crown, TrendingUp, TrendingDown,
-  Minus, Swords, Flame, User, Users, Zap
+  Trophy, Medal, Crown,
+  Swords, Flame, User, Users, Zap, TrendingUp
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Header } from "@/components/Header";
-import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageBackground } from "@/components/PageBackground";
 import {
@@ -16,54 +15,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-//  TYPES 
+import { leaderboardApi } from "@/lib/api";
+import type { LeaderboardEntry, LeaderboardStats, MyRank } from "@/lib/api";
 
 type TimeFilter = "all" | "month" | "week";
-
-interface LeaderboardEntry {
-  rank: number;
-  username: string;
-  score: number;
-  battlesWon: number;
-  totalBattles: number;
-  winRate: number;
-  streak: number;
-  trend: "up" | "down" | "same";
-  trendValue: number;
-}
-
-//  HARDCODED DATA (replace with DB query) 
-// TODO: const entries = await getLeaderboard({ filter: timeFilter })
-// TODO: const myStats = await getMyRank(session.userId)
-
-const ALL_TIME: LeaderboardEntry[] = [
-  { rank: 1,  username: "AlgoMaster",    score: 12450, battlesWon: 156, totalBattles: 178, winRate: 87.6, streak: 12, trend: "same", trendValue: 0 },
-  { rank: 2,  username: "CodeNinja99",   score: 11280, battlesWon: 142, totalBattles: 165, winRate: 86.1, streak: 8,  trend: "up",   trendValue: 2 },
-  { rank: 3,  username: "ByteRunner",    score: 10890, battlesWon: 138, totalBattles: 162, winRate: 85.2, streak: 5,  trend: "up",   trendValue: 1 },
-  { rank: 4,  username: "SyntaxWizard",  score: 9750,  battlesWon: 124, totalBattles: 150, winRate: 82.7, streak: 3,  trend: "down", trendValue: 2 },
-  { rank: 5,  username: "DevLegend",     score: 9320,  battlesWon: 118, totalBattles: 145, winRate: 81.4, streak: 0,  trend: "up",   trendValue: 3 },
-  { rank: 6,  username: "PixelCoder",    score: 8890,  battlesWon: 112, totalBattles: 140, winRate: 80.0, streak: 4,  trend: "same", trendValue: 0 },
-  { rank: 7,  username: "BinaryBoss",    score: 8450,  battlesWon: 106, totalBattles: 135, winRate: 78.5, streak: 2,  trend: "down", trendValue: 1 },
-  { rank: 8,  username: "LoopLord",      score: 8120,  battlesWon: 102, totalBattles: 132, winRate: 77.3, streak: 0,  trend: "up",   trendValue: 4 },
-  { rank: 9,  username: "StackSolver",   score: 7890,  battlesWon: 98,  totalBattles: 128, winRate: 76.6, streak: 1,  trend: "same", trendValue: 0 },
-  { rank: 10, username: "RecursiveKing", score: 7650,  battlesWon: 95,  totalBattles: 125, winRate: 76.0, streak: 0,  trend: "down", trendValue: 3 },
-];
-
-// TODO: swap per filter from API
-const DATA_BY_FILTER: Record<TimeFilter, LeaderboardEntry[]> = {
-  all:   ALL_TIME,
-  month: ALL_TIME.map((e, i) => ({ ...e, rank: i + 1, score: Math.round(e.score * 0.3), battlesWon: Math.round(e.battlesWon * 0.25) })),
-  week:  ALL_TIME.map((e, i) => ({ ...e, rank: i + 1, score: Math.round(e.score * 0.08), battlesWon: Math.round(e.battlesWon * 0.07) })),
-};
-
-const MY_STATS: LeaderboardEntry = {
-  rank: 24, username: "aryan_dev", score: 4280,
-  battlesWon: 47, totalBattles: 82, winRate: 57.3,
-  streak: 4, trend: "up", trendValue: 5,
-};
-
-const PLATFORM_STATS = { totalPlayers: 1247, battlesThisWeek: 8432 };
 
 //  HELPERS 
 
@@ -92,20 +47,7 @@ function Avatar({ username, size = "md" }: { username: string; size?: "sm" | "md
 
 //  SUBCOMPONENTS 
 
-function TrendBadge({ trend, value }: { trend: "up" | "down" | "same"; value: number }) {
-  if (trend === "same") return <Minus className="h-4 w-4 text-muted-foreground/50" />;
-  return (
-    <span className={cn(
-      "inline-flex items-center gap-0.5 text-xs font-bold tabular-nums",
-      trend === "up" ? "text-success" : "text-danger"
-    )}>
-      {trend === "up" ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
-      {value}
-    </span>
-  );
-}
-
-function MyRankCard({ stats }: { stats: LeaderboardEntry }) {
+function MyRankCard({ stats }: { stats: MyRank }) {
   return (
     <Card className="rounded-2xl p-5 sm:p-6 gap-0 py-0">
       <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-5">Your Ranking</p>
@@ -121,9 +63,6 @@ function MyRankCard({ stats }: { stats: LeaderboardEntry }) {
             <p className="font-bold text-foreground">@{stats.username}</p>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-2xl font-black text-foreground tabular-nums">#{stats.rank}</span>
-              <span className="text-xs text-success font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                ↑ {stats.trendValue} this week
-              </span>
             </div>
           </div>
         </div>
@@ -141,7 +80,7 @@ function MyRankCard({ stats }: { stats: LeaderboardEntry }) {
             <p className="text-xl font-black text-foreground tabular-nums">{stats.winRate}%</p>
             <p className="text-xs text-muted-foreground mt-0.5">win rate</p>
           </div>
-          {stats.streak > 0 && (
+          {(stats.streak || 0) > 0 && (
             <div className="text-center">
               <p className="text-xl font-black text-orange-500 flex items-center gap-1 tabular-nums">
                 <Flame className="h-4 w-4" />{stats.streak}
@@ -157,16 +96,49 @@ function MyRankCard({ stats }: { stats: LeaderboardEntry }) {
 
 //  MAIN 
 
+const defaultStats: LeaderboardStats = { totalPlayers: 0, battlesThisWeek: 0 };
+const defaultMyRank: MyRank = { rank: 0, username: "", score: 0, battlesWon: 0, totalBattles: 0, winRate: 0 };
+
 export default function Leaderboard() {
-  const { user } = useAuth();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [myRank, setMyRank] = useState(defaultMyRank);
+  const [platformStats, setPlatformStats] = useState(defaultStats);
+  const [loading, setLoading] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
-  const myUsername = user?.username || "You";
-  const myStats: LeaderboardEntry = { ...MY_STATS, username: myUsername };
+  useEffect(() => {
+    setLoading(true);
+    if (!initialized) setInitialized(true);
+    Promise.all([
+      leaderboardApi.getLeaderboard(timeFilter, 10),
+      leaderboardApi.getMyRank(),
+      leaderboardApi.getStats()
+    ]).then(([lbRes, rankRes, statsRes]) => {
+      if (lbRes.data?.leaderboard) setLeaderboard(lbRes.data.leaderboard);
+      if (rankRes.data && !("error" in (rankRes.data as any))) setMyRank(rankRes.data);
+      if (statsRes.data && !("error" in (statsRes.data as any))) setPlatformStats(statsRes.data);
+    }).catch(console.error).finally(() => setLoading(false));
+  }, [timeFilter, initialized]);
 
-  const entries = DATA_BY_FILTER[timeFilter];
-  const topThree = entries.slice(0, 3);
-  const rest = entries.slice(3);
+  const myRankData = myRank;
+
+  const topThree = leaderboard.slice(0, 3);
+  const rest = leaderboard.slice(3);
+
+  if (loading && !initialized) {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <Header />
+        <PageBackground />
+        <main className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+          <div className="flex items-center justify-center py-20">
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -193,7 +165,7 @@ export default function Leaderboard() {
                 <Users className="h-4 w-4 text-info" />
               </div>
               <div>
-                <p className="text-lg font-black text-foreground tabular-nums">{PLATFORM_STATS.totalPlayers.toLocaleString()}</p>
+                <p className="text-lg font-black text-foreground tabular-nums">{platformStats.totalPlayers.toLocaleString()}</p>
                 <p className="text-xs text-muted-foreground">Total Players</p>
               </div>
             </CardContent>
@@ -204,7 +176,7 @@ export default function Leaderboard() {
                 <Zap className="h-4 w-4 text-success" />
               </div>
               <div>
-                <p className="text-lg font-black text-foreground tabular-nums">{PLATFORM_STATS.battlesThisWeek.toLocaleString()}</p>
+                <p className="text-lg font-black text-foreground tabular-nums">{platformStats.battlesThisWeek.toLocaleString()}</p>
                 <p className="text-xs text-muted-foreground">Battles This Week</p>
               </div>
             </CardContent>
@@ -212,7 +184,7 @@ export default function Leaderboard() {
         </div>
 
         {/*  My Rank  */}
-        <MyRankCard stats={myStats} />
+        <MyRankCard stats={myRankData} />
 
         {/*  Filter tabs  */}
         <div className="flex flex-wrap items-center gap-1 p-1 bg-muted rounded-xl w-fit">
@@ -235,46 +207,52 @@ export default function Leaderboard() {
         {/*  Podium Top 3  */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-3">
           {/* 2nd place */}
-          <div className="flex flex-col items-center gap-3 pt-0 sm:pt-6">
-            <Avatar username={topThree[1].username} size="md" />
-            <div className="text-center">
-              <p className="text-sm font-bold text-foreground">{topThree[1].username}</p>
-              <p className="text-xs text-muted-foreground font-mono tabular-nums">{topThree[1].score.toLocaleString()}</p>
+          {topThree[1] ? (
+            <div className="flex flex-col items-center gap-3 pt-0 sm:pt-6">
+              <Avatar username={topThree[1].username} size="md" />
+              <div className="text-center">
+                <p className="text-sm font-bold text-foreground">{topThree[1].username}</p>
+                <p className="text-xs text-muted-foreground font-mono tabular-nums">{topThree[1].score.toLocaleString()}</p>
+              </div>
+              <div className="w-full bg-slate-400/15 border border-slate-400/20 rounded-t-xl pt-3 pb-2 text-center">
+                <Medal className="h-5 w-5 text-slate-400 mx-auto" />
+                <p className="text-xs font-bold text-muted-foreground mt-1">#2</p>
+              </div>
             </div>
-            <div className="w-full bg-slate-400/15 border border-slate-400/20 rounded-t-xl pt-3 pb-2 text-center">
-              <Medal className="h-5 w-5 text-slate-400 mx-auto" />
-              <p className="text-xs font-bold text-muted-foreground mt-1">#2</p>
-            </div>
-          </div>
+          ) : <div />}
 
           {/* 1st place */}
-          <div className="flex flex-col items-center gap-3">
-            <div className="relative">
-              <Avatar username={topThree[0].username} size="lg" />
-              <Crown className="h-4 w-4 text-amber-400 absolute -top-2 left-1/2 -translate-x-1/2" />
+          {topThree[0] ? (
+            <div className="flex flex-col items-center gap-3">
+              <div className="relative">
+                <Avatar username={topThree[0].username} size="lg" />
+                <Crown className="h-4 w-4 text-amber-400 absolute -top-2 left-1/2 -translate-x-1/2" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-bold text-foreground">{topThree[0].username}</p>
+                <p className="text-xs font-mono font-bold text-amber-500 tabular-nums">{topThree[0].score.toLocaleString()}</p>
+              </div>
+              <div className="w-full bg-amber-500/10 border border-amber-500/20 rounded-t-xl pt-4 pb-2 text-center">
+                <Trophy className="h-5 w-5 text-amber-400 mx-auto" />
+                <p className="text-xs font-bold text-amber-500 mt-1">#1</p>
+              </div>
             </div>
-            <div className="text-center">
-              <p className="text-sm font-bold text-foreground">{topThree[0].username}</p>
-              <p className="text-xs font-mono font-bold text-amber-500 tabular-nums">{topThree[0].score.toLocaleString()}</p>
-            </div>
-            <div className="w-full bg-amber-500/10 border border-amber-500/20 rounded-t-xl pt-4 pb-2 text-center">
-              <Trophy className="h-5 w-5 text-amber-400 mx-auto" />
-              <p className="text-xs font-bold text-amber-500 mt-1">#1</p>
-            </div>
-          </div>
+          ) : <div />}
 
           {/* 3rd place */}
-          <div className="flex flex-col items-center gap-3 pt-0 sm:pt-10">
-            <Avatar username={topThree[2].username} size="md" />
-            <div className="text-center">
-              <p className="text-sm font-bold text-foreground">{topThree[2].username}</p>
-              <p className="text-xs text-muted-foreground font-mono tabular-nums">{topThree[2].score.toLocaleString()}</p>
+          {topThree[2] ? (
+            <div className="flex flex-col items-center gap-3 pt-0 sm:pt-10">
+              <Avatar username={topThree[2].username} size="md" />
+              <div className="text-center">
+                <p className="text-sm font-bold text-foreground">{topThree[2].username}</p>
+                <p className="text-xs text-muted-foreground font-mono tabular-nums">{topThree[2].score.toLocaleString()}</p>
+              </div>
+              <div className="w-full bg-amber-600/10 border border-amber-600/20 rounded-t-xl pt-2 pb-2 text-center">
+                <Medal className="h-5 w-5 text-amber-600 mx-auto" />
+                <p className="text-xs font-bold text-muted-foreground mt-1">#3</p>
+              </div>
             </div>
-            <div className="w-full bg-amber-600/10 border border-amber-600/20 rounded-t-xl pt-2 pb-2 text-center">
-              <Medal className="h-5 w-5 text-amber-600 mx-auto" />
-              <p className="text-xs font-bold text-muted-foreground mt-1">#3</p>
-            </div>
-          </div>
+          ) : <div />}
         </div>
 
         {/*  Full Table (rank 4–10)  */}
@@ -314,7 +292,7 @@ export default function Leaderboard() {
                       <Avatar username={entry.username} />
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-foreground truncate">{entry.username}</p>
-                        {entry.streak > 0 && (
+                        {(entry.streak || 0) > 0 && (
                           <p className="text-xs text-orange-500 flex items-center gap-0.5 font-medium">
                             <Flame className="h-3 w-3" />{entry.streak} streak
                           </p>
@@ -349,8 +327,8 @@ export default function Leaderboard() {
                   </TableCell>
 
                   <TableCell className="hidden md:table-cell px-5 py-4 align-middle">
-                    <div className="flex items-center justify-center">
-                      <TrendBadge trend={entry.trend} value={entry.trendValue} />
+                    <div className="flex items-center justify-center text-muted-foreground">
+                      -
                     </div>
                   </TableCell>
                 </TableRow>
@@ -361,7 +339,7 @@ export default function Leaderboard() {
 
         {/*  Footer note  */}
         <p className="text-center text-xs text-muted-foreground pb-4">
-          Rankings update every 30 minutes · Showing top 10 of {PLATFORM_STATS.totalPlayers.toLocaleString()} players
+          Rankings update every 30 minutes · Showing top 10 of {platformStats.totalPlayers.toLocaleString()} players
         </p>
       </main>
     </div>
