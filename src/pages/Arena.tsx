@@ -90,8 +90,8 @@ export default function BattleArena() {
       setIsFullscreen(true);
       setShowFullscreenPrompt(false);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Please allow fullscreen in your browser.";
-      toast.error("Could not enter fullscreen", { description: message });
+      // const message = err instanceof Error ? err.message : "Please allow fullscreen in your browser.";
+      // toast.error("Could not enter fullscreen", { description: message });
     }
   }, []);
 
@@ -148,7 +148,7 @@ export default function BattleArena() {
       setLoading(false);
       setTimeLeft(Math.floor((new Date(data.endsAt).getTime() - Date.now()) / 1000));
       // Auto-enter fullscreen as soon as the server marks the battle as started.
-      void enterFullscreen();
+      // void enterFullscreen();
     });
 
     socket.on("score:update", (data: { player1Score: number; player2Score: number }) => {
@@ -352,19 +352,19 @@ export default function BattleArena() {
     const handleVisibilityChange = () => {
       if (document.hidden) {
         // Anti-cheat: detect tab switch or app minimization.
-        registerViolation("Tab switching or window minimizing detected.");
+        // registerViolation("Tab switching or window minimizing detected.");
       }
     };
 
     const handleBlur = () => {
       // Anti-cheat: detect focus leaving the battle window.
-      registerViolation("Window focus lost.");
+      // registerViolation("Window focus lost.");
     };
 
     const handleFullscreenChange = () => {
       if (!document.fullscreenElement) {
         // Anti-cheat: exiting fullscreen during battle is a violation.
-        registerViolation("Exited fullscreen mode.");
+        // registerViolation("Exited fullscreen mode.");
       }
     };
 

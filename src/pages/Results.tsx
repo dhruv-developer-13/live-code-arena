@@ -212,9 +212,9 @@ function MotivationalBanner({ quote, isWinner }: { quote: string; isWinner: bool
 export default function Results() {
   const { battleId } = useParams<{ battleId: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
 
-  const { data: battleData, isLoading, error } = useBattleResults(battleId || "");
+  const { data: battleData, isLoading: isBattleLoading, error } = useBattleResults(battleId || "");
 
   useEffect(() => {
     if (!battleId) {
@@ -222,7 +222,7 @@ export default function Results() {
     }
   }, [battleId, navigate]);
 
-  if (isLoading) {
+  if (isAuthLoading || isBattleLoading) {
     return (
       <div className="min-h-screen bg-background text-foreground">
         <Header />

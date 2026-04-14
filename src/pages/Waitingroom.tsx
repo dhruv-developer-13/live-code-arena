@@ -85,6 +85,11 @@ export default function WaitingRoom() {
       toast.error("Connection error", { description: err.message });
     });
 
+    socket.on("error", (err: { code: number; message: string }) => {
+      console.error("Socket error:", err);
+      toast.error(err.message);
+    });
+
     socket.on("opponent_joined", ({ player }: { player: { userId: string; username: string } }) => {
       const opponentId = mySocketId === "1" ? "2" : "1";
       setPlayers((prev) => {
@@ -162,6 +167,10 @@ export default function WaitingRoom() {
   }, [battleId, isStarting, mySocketId, currentPlayerUsername, navigate]);
 
   const toggleReady = () => {
+    if (players.length < 2) {
+      toast.error("Wait for opponent to join first");
+      return;
+    }
     const newReady = !myPlayer?.isReady;
     setPlayers((prev) =>
       prev.map((p) => (p.id === mySocketId ? { ...p, isReady: newReady } : p))
@@ -323,7 +332,8 @@ export default function WaitingRoom() {
           "text-center text-sm font-medium transition-colors",
           allReady ? "text-success" : "text-muted-foreground"
         )}>
-          {!myPlayer?.isReady && "Click \"Ready Up\" when you're set to go"}
+          {players.length < 2 && "Waiting for opponent to join…"}
+          {players.length === 2 && !myPlayer?.isReady && "Click \"Ready Up\" when you're set to go"}
           {myPlayer?.isReady && !allReady && "Waiting for opponent to ready up…"}
           {allReady && "Both players ready — let's battle!"}
         </div>
@@ -331,8 +341,10 @@ export default function WaitingRoom() {
         <div className="flex gap-3">
           <button
             onClick={toggleReady}
+            disabled={players.length < 2}
             className={cn(
               "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border transition-all duration-200",
+              players.length < 2 && "opacity-50 cursor-not-allowed",
               myPlayer?.isReady
                 ? "bg-emerald-500/10 border-emerald-500/30 text-success hover:bg-emerald-500/15"
                 : "bg-muted border-border text-foreground hover:bg-muted/70"
