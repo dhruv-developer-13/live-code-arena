@@ -6,6 +6,11 @@ import {
   LogOut, Trophy, Zap,
   Maximize, ShieldAlert, ShieldX,
 } from "lucide-react";
+import CodeMirror from "@uiw/react-codemirror";
+import { python } from "@codemirror/lang-python";
+import { oneDark } from "@codemirror/theme-one-dark";
+import { indentWithTab } from "@codemirror/commands";
+import { keymap } from "@codemirror/view";
 import { cn } from "../lib/utils";
 import { toast } from "sonner";
 import {
@@ -46,9 +51,6 @@ export default function BattleArena() {
   const setCode = useCallback((val: string) => {
     setCodes((prev) => ({ ...prev, [selectedProblem]: val }));
   }, [selectedProblem]);
-  const editorRef = useRef<HTMLTextAreaElement>(null);
-  const codeRef = useRef(code);
-  useEffect(() => { codeRef.current = code; }, [code]);
 
   const [running, setRunning] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -276,22 +278,6 @@ export default function BattleArena() {
     // disabled for testing
   }, []);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === "Tab") {
-      e.preventDefault();
-      const textarea = editorRef.current;
-      if (!textarea) return;
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const newCode = codeRef.current.slice(0, start) + "    " + codeRef.current.slice(end);
-      setCode(newCode);
-      requestAnimationFrame(() => {
-        textarea.selectionStart = start + 4;
-        textarea.selectionEnd = start + 4;
-      });
-    }
-  }, [setCode]);
-
   const isUrgent = timeLeft < 5 * 60;
   const iLeading = myScore >= opponentScore;
 
@@ -515,17 +501,23 @@ export default function BattleArena() {
             <ResizablePanelGroup orientation="vertical" className="flex-1 min-h-0">
               <ResizablePanel defaultSize="100" minSize="50">
                 <div className="relative h-full">
-                  <textarea
-                    ref={editorRef}
+                  <CodeMirror
                     value={code}
-                    onChange={(e) => setCode(e.target.value)}
+                    height="100%"
+                    theme={oneDark}
+                    extensions={[python(), keymap.of([indentWithTab])]}
+                    onChange={(value) => setCode(value)}
                     onCopy={blockClipboard}
                     onCut={blockClipboard}
                     onPaste={blockClipboard}
-                    onKeyDown={handleKeyDown}
-                    className="absolute inset-0 w-full h-full resize-none p-4 font-mono text-sm bg-card text-foreground focus:outline-none leading-6"
-                    spellCheck={false} autoComplete="off" autoCorrect="off" autoCapitalize="off"
-                    data-gramm="false" data-enable-grammarly="false"
+                    onContextMenu={(e) => e.preventDefault()}
+                    className="absolute inset-0 w-full h-full text-sm"
+                    basicSetup={{
+                      lineNumbers: true,
+                      foldGutter: false,
+                      highlightActiveLine: true,
+                      highlightActiveLineGutter: true,
+                    }}
                   />
                 </div>
               </ResizablePanel>

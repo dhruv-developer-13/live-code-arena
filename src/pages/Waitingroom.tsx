@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { api } from "@/lib/api";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { Copy, Check, Loader2, Swords, LogOut, Users, Shield, ShieldAlert, Zap, Clock, ShieldCheck, Share2 } from "lucide-react";
+import { Copy, Check, Loader2, Swords, LogOut, Users, Shield, ShieldAlert, Zap, Clock, ShieldCheck, Share2, ArrowLeft } from "lucide-react";
 import { Header } from "@/components/Header";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -213,14 +213,23 @@ export default function WaitingRoom() {
       <PageBackground />
       <main className="relative z-10 max-w-xl mx-auto px-6 py-12 space-y-6">
 
-        <div className="flex items-center gap-3.5">
-          <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-            <Swords className="h-4 w-4 text-emerald-500" />
+        <div className="flex items-center justify-between gap-3.5">
+          <div className="flex items-center gap-3.5">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+              <Swords className="h-4 w-4 text-emerald-500" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight">Waiting Room</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">Share the code to invite your opponent</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight">Waiting Room</h1>
-            <p className="text-xs text-muted-foreground mt-0.5">Share the code to invite your opponent</p>
-          </div>
+          <button
+            onClick={() => navigate("/battle-room")}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-muted text-xs font-semibold text-foreground transition-colors"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Back
+          </button>
         </div>
 
         <Card className="rounded-2xl gap-0 py-0 p-8 text-center space-y-4">

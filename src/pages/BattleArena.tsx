@@ -24,7 +24,19 @@ import {
 import problemsData from "../data/problems.json";
 import { runBatch, judgeResults, type JudgedResult } from "../lib/executor"
 import { io, Socket } from "socket.io-client"
+import CodeMirror from "@uiw/react-codemirror";
+import { python } from "@codemirror/lang-python";
+import { oneDark } from "@codemirror/theme-one-dark";
+import {
+  lineNumbers,
+  highlightActiveLineGutter,
+  highlightActiveLine,
+  drawSelection,
+} from "@codemirror/view";
 
+import { EditorView } from "@codemirror/view";
+import { defaultKeymap } from "@codemirror/commands";
+import { keymap } from "@codemirror/view";
 
 
 async function apiFetchProblems(): Promise<Problem[]> {
@@ -69,9 +81,6 @@ async function apiFetchProblems(): Promise<Problem[]> {
 //   };
 // }
 // ─── TYPES ────────────────────────────────────────────────────────────────────
-
-
-
 
 interface Example {
   input: string;
@@ -844,27 +853,44 @@ useEffect(() => {
             </div>
           </div>
 
-          {/* Code textarea — anti-cheat */}
-          <div className="flex-1 relative min-h-0">
-            <textarea
-              ref={editorRef}
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              // onCopy={blockClipboard}
-              // onCut={blockClipboard}
-              // onPaste={blockClipboard}
-              // onKeyDown={handleKeyDown}
-              onContextMenu={(e) => e.preventDefault()}
-              className="absolute inset-0 w-full h-full resize-none p-4 font-mono text-sm bg-card text-foreground focus:outline-none leading-6"
-              spellCheck={false}
-              autoComplete="off"
-              autoCorrect="off"
-              autoCapitalize="off"
-              data-gramm="false"
-              data-enable-grammarly="false"
-            />
-          </div>
+          {/* Code editor — CodeMirror 6 with Python syntax highlighting */}
+          <div className="flex-1 min-h-0 overflow-hidden" style={{ display: "flex", flexDirection: "column" }}>
+              <CodeMirror
+                value={code}
+                height="100%"
+                theme={oneDark}
+                extensions={[
+                  python(),
 
+                  lineNumbers(),
+                  highlightActiveLineGutter(),
+                  highlightActiveLine(),
+                  drawSelection(),
+
+                  keymap.of(defaultKeymap),
+
+                  EditorView.theme({
+                    "&": {
+                      fontSize: "14px",
+                    },
+                    ".cm-content": {
+                      padding: "12px",
+                    },
+                    ".cm-line": {
+                      lineHeight: "1.6",
+                    },
+                    ".cm-gutters": {
+                      backgroundColor: "#0f172a", // dark gutter like VS Code
+                      color: "#6b7280",
+                      border: "none",
+                    },
+                  }),
+                ]}
+                onChange={(value) => setCode(value)}
+                style={{ height: "100%", width: "100%" }}
+              />
+          </div>
+          
           {/* Test Results */}
           {showResults && (
             <div className="border-t border-border bg-card shrink-0">

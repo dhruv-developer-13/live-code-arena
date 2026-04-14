@@ -63,3 +63,12 @@
     @apply bg-background text-foreground;
     }
 }
+
+/* CodeMirror height fix — every wrapper must have explicit height */
+.cm-editor {
+  height: 100%;
+}
+
+.cm-scroller {
+  overflow: auto !important;
+}
