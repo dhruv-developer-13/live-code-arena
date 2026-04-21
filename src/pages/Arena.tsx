@@ -20,6 +20,7 @@ import {
 import { useRunCode, useSubmitCode } from "../lib/queries";
 import { ThemeToggleButton } from "@/components/ThemeToggleButton";
 import type { Question, RunResult, SubmitResult } from "../lib/api";
+import { battleApi } from "../lib/api";
 import { connectSocket } from "@/lib/socket";
 import { useAuth } from "@/context/AuthContext";
 
@@ -466,7 +467,15 @@ export default function BattleArena() {
               </button>
               <div className="flex gap-2">
                 <button onClick={() => setShowLeaveDialog(false)} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-secondary hover:bg-secondary/70 text-sm font-medium transition-colors">Stay</button>
-                <button onClick={() => { void leaveBattle("/"); }} className="flex-1 px-4 py-2.5 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20 text-sm font-semibold transition-colors">Forfeit</button>
+                <button onClick={async () => {
+                  setShowLeaveDialog(false);
+                  try {
+                    await battleApi.forfeit(battleId);
+                  } catch (err) {
+                    console.error("Failed to forfeit battle:", err);
+                  }
+                  void leaveBattle("/results/" + battleId);
+                }} className="flex-1 px-4 py-2.5 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20 text-sm font-semibold transition-colors">Forfeit</button>
               </div>
             </div>
           </div>
