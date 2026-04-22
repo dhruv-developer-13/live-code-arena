@@ -64,20 +64,25 @@ export default function WaitingRoom() {
     const socket = connectSocket();
     socketRef.current = socket;
 
+    let hasJoinedRoom = false;
+
     const joinRoom = () => {
+      if (hasJoinedRoom) {
+        console.log("[Waitingroom] Already joined room, skipping");
+        return;
+      }
       console.log("[Waitingroom] Joining room:", roomCode);
+      hasJoinedRoom = true;
       socket.emit("waiting_room_join", {
         roomCode,
         username: currentPlayerUsername,
       });
     };
 
-    // If already connected, join immediately
     if (socket.connected) {
       joinRoom();
     }
 
-    // Also join when connected
     socket.on("connect", joinRoom);
 
     socket.on("connect_error", (err) => {

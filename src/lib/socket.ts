@@ -3,35 +3,31 @@ import { io, type Socket } from "socket.io-client";
 let socket: Socket | null = null;
 
 export function getSocket(): Socket {
-  if (!socket || socket.disconnected) {
-    // Always get fresh token
+  if (socket && socket.connected) {
+    return socket;
+  }
+
+  if (!socket) {
     const token = localStorage.getItem("token");
-    
-    if (socket) {
-      socket.removeAllListeners();
-      socket.disconnect();
-    }
-    
     socket = io("http://localhost:3000", {
       auth: { token: token || undefined },
       autoConnect: false,
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
+      reconnection: false,
     });
-    
+
     socket.on("connect", () => {
       console.log("[socket] Connected, socket id:", socket?.id);
     });
-    
+
     socket.on("disconnect", (reason) => {
       console.log("[socket] Disconnected:", reason);
     });
-    
+
     socket.on("connect_error", (err) => {
       console.error("[socket] Connection error:", err.message);
     });
   }
+
   return socket;
 }
 

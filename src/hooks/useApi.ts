@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { userApi, historyApi, leaderboardApi, UserStats, RecentBattle, BattleHistory, LeaderboardEntry, LeaderboardStats, MyRank } from "@/lib/api";
+import { userApi, historyApi, leaderboardApi } from "@/lib/api";
+import type { UserStats, RecentBattle, BattleHistory, LeaderboardEntry, LeaderboardStats, MyRank } from "@/lib/api";
 
 const defaultUserStats: UserStats = { battlesWon: 0, totalBattles: 0, winRate: 0, avgScore: 0, totalPoints: 0 };
 const defaultRecentBattles: RecentBattle[] = [];

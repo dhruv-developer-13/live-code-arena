@@ -4,7 +4,7 @@ import {
   Clock, Play, Send,
   CheckCircle2, XCircle, Circle,
   LogOut, Trophy, Zap,
-  Maximize, ShieldAlert, ShieldX,
+  Maximize, ShieldAlert,
 } from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { python } from "@codemirror/lang-python";
@@ -18,6 +18,7 @@ import {
   ResizablePanelGroup, ResizablePanel, ResizableHandle,
 } from "../components/ui/resizable";
 import { useRunCode, useSubmitCode } from "../lib/queries";
+import { battleApi } from "../lib/api";
 import { ThemeToggleButton } from "@/components/ThemeToggleButton";
 import type { Question, RunResult, SubmitResult } from "../lib/api";
 import { connectSocket } from "@/lib/socket";
@@ -33,7 +34,6 @@ const PYTHON_STUB = `# Read input and write your solution here
 
 `;
 const MAX_VIOLATIONS = 3;
-const SELECTION_BLOCK_MSG = "Selection of text is prohibited here";
 
 export default function BattleArena() {
   const { battleId = "" } = useParams<{ battleId: string }>();
@@ -61,7 +61,6 @@ export default function BattleArena() {
   const [timeLeft, setTimeLeft] = useState(0);
   const [myScore, setMyScore] = useState(0);
   const [opponentScore, setOpponentScore] = useState(0);
-  const [myProgress, setMyProgress] = useState<Record<string, number | null>>({ Easy: null, Medium: null, Hard: null });
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [questionBestScores, setQuestionBestScores] = useState<Record<string, number>>({});
 
@@ -70,13 +69,9 @@ export default function BattleArena() {
   const [myScorePulse, setMyScorePulse] = useState(false);
   const [oppScorePulse, setOppScorePulse] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(() => !!document.fullscreenElement);
-  const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
   const [violations, setViolations] = useState(0);
-  const [showViolationWarning, setShowViolationWarning] = useState(false);
-  const [violationReason, setViolationReason] = useState("");
   const ignoreDisconnectRef = useRef(true);
   const lastViolationAtRef = useRef(0);
-  const lastSelectionToastAtRef = useRef(0);
 
   const runMutation = useRunCode(battleId, problems[selectedProblem]?.id || "");
   const submitMutation = useSubmitCode(battleId, problems[selectedProblem]?.id || "");
@@ -84,35 +79,37 @@ export default function BattleArena() {
   const enterFullscreen = useCallback(async () => {
     try {
       if (!document.fullscreenElement) {
-        // Anti-cheat: lock the battle UI into fullscreen for active rounds.
         await document.documentElement.requestFullscreen();
       }
       setIsFullscreen(true);
-      setShowFullscreenPrompt(false);
     } catch (err: unknown) {
-      // const message = err instanceof Error ? err.message : "Please allow fullscreen in your browser.";
-      // toast.error("Could not enter fullscreen", { description: message });
+      // Ignore fullscreen errors
     }
   }, []);
 
   const exitFullscreen = useCallback(async () => {
     try {
       if (document.fullscreenElement) {
-        // Anti-cheat cleanup: release fullscreen when leaving the arena flow.
         await document.exitFullscreen();
       }
     } catch {
-      // Ignore fullscreen exit failures and continue the battle flow.
+      // Ignore fullscreen exit failures
     } finally {
       setIsFullscreen(false);
-      setShowFullscreenPrompt(false);
     }
   }, []);
 
   const leaveBattle = useCallback(async (destination: string) => {
-    // Ensure fullscreen is exited before any post-battle navigation.
-    await exitFullscreen();
-    navigate(destination);
+    console.log("[Arena] leaveBattle called, destination:", destination);
+    try {
+      await exitFullscreen();
+      console.log("[Arena] exitFullscreen done, navigating to:", destination);
+      navigate(destination);
+      console.log("[Arena] navigation called");
+    } catch (err) {
+      console.error("[Arena] leaveBattle error:", err);
+      navigate(destination);
+    }
   }, [exitFullscreen, navigate]);
 
   const pulseMyScore = useCallback(() => {
@@ -172,10 +169,12 @@ export default function BattleArena() {
     });
 
     socket.on("battle:end", ({ cancelled }: { cancelled: boolean }) => {
+      console.log("[Arena] Received battle:end event, cancelled:", cancelled);
       if (cancelled) {
         toast.error("Battle was cancelled");
         void leaveBattle("/");
       } else {
+        console.log("[Arena] Navigating to results:", battleId);
         void leaveBattle(`/results/${battleId}`);
       }
     });
@@ -269,12 +268,6 @@ export default function BattleArena() {
           ...prev,
           [currentProblem.id]: result.points,
         }));
-        
-        // Score is updated via socket from server, don't manually add
-        // This prevents double counting
-        
-        const diff = currentProblem.difficulty.toLowerCase() as "easy" | "medium" | "hard";
-        setMyProgress((p) => ({ ...p, [diff]: (p[diff] || 0) + (result.points - (result.previousMax || 0)) }));
 
         if (status === "AC") {
           toast.success("Accepted!", { description: `+${result.points - (result.previousMax || 0)} points` });
@@ -307,29 +300,17 @@ export default function BattleArena() {
     lastViolationAtRef.current = now;
 
     if (deductPoints) {
-      // Penalties are server-authoritative; client only reports the violation event.
       socketRef.current?.emit("violation", { battleId, reason });
       toast.error("Violation recorded", { description: reason });
     }
 
-    setViolationReason(reason);
-    setShowViolationWarning(true);
-    // Track local violation count for warning/disqualification UI state.
     setViolations((prev) => {
       const next = prev + 1;
       if (next >= MAX_VIOLATIONS) {
         toast.error("Disqualified", {
-          description: "Too many violations. Auto-submitting and ending battle.",
+          description: "Too many violations. Battle will end shortly.",
         });
-        setTimeout(async () => {
-          try {
-            await handleSubmit();
-          } finally {
-            void leaveBattle(`/results/${battleId}`);
-          }
-        }, 500);
       } else if (!deductPoints) {
-        // Some anti-cheat checks are warnings only and do not deduct points.
         toast.warning(`Warning ${next}/${MAX_VIOLATIONS}`, { description: reason });
       } else {
         toast.error(`Violation ${next}/${MAX_VIOLATIONS}`, { description: reason });
@@ -337,16 +318,6 @@ export default function BattleArena() {
       return next;
     });
   }, [battleId, handleSubmit, leaveBattle]);
-
-  const handleQuestionSelectionAttempt = useCallback(() => {
-    const now = Date.now();
-    if (now - lastSelectionToastAtRef.current < 1200) return;
-    const selected = globalThis.getSelection()?.toString().trim() ?? "";
-    if (!selected) return;
-    globalThis.getSelection()?.removeAllRanges();
-    lastSelectionToastAtRef.current = now;
-    toast.error(SELECTION_BLOCK_MSG);
-  }, []);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -466,7 +437,16 @@ export default function BattleArena() {
               </button>
               <div className="flex gap-2">
                 <button onClick={() => setShowLeaveDialog(false)} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-secondary hover:bg-secondary/70 text-sm font-medium transition-colors">Stay</button>
-                <button onClick={() => { void leaveBattle("/"); }} className="flex-1 px-4 py-2.5 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20 text-sm font-semibold transition-colors">Forfeit</button>
+                <button onClick={async () => {
+                  try {
+                    console.log("[Forfeit] Starting forfeit for battle:", battleId);
+                    await battleApi.forfeit(battleId);
+                    console.log("[Forfeit] API call succeeded, waiting for battle:end event...");
+                  } catch (err) {
+                    console.error("[Forfeit] API error:", err);
+                    toast.error("Failed to forfeit battle");
+                  }
+                }} className="flex-1 px-4 py-2.5 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20 text-sm font-semibold transition-colors">Forfeit</button>
               </div>
             </div>
           </div>
@@ -779,15 +759,11 @@ export default function BattleArena() {
               <h3 className="font-bold text-sm mb-4">Your Progress</h3>
               <div className="space-y-2.5">
                 {difficultyOrder.map((diff) => {
-                  const diffKey = diff.toLowerCase() as "easy" | "medium" | "hard";
                   const maxPts = diff === "Easy" ? 100 : diff === "Medium" ? 200 : 300;
-                  const earned = myProgress[diffKey];
                   return (
                     <div key={diff} className="flex items-center justify-between">
                       <span className={cn("text-sm font-semibold", diff === "Easy" && "text-success", diff === "Medium" && "text-warning", diff === "Hard" && "text-danger")}>{diff}</span>
-                      {earned !== null && earned !== undefined
-                        ? <span className="flex items-center gap-1.5 text-emerald-500 text-xs font-bold font-mono"><CheckCircle2 className="h-3.5 w-3.5" />{earned}/{maxPts}</span>
-                        : <span className="flex items-center gap-1.5 text-muted-foreground text-xs font-mono"><Circle className="h-3.5 w-3.5" />0/{maxPts}</span>}
+                      <span className="flex items-center gap-1.5 text-muted-foreground text-xs font-mono"><Circle className="h-3.5 w-3.5" />0/{maxPts}</span>
                     </div>
                   );
                 })}

@@ -195,6 +195,9 @@ export const battleApi = {
 
   getResults: (battleId: string) =>
     api.get<BattleResults>(`/api/battles/${battleId}/results`),
+
+  forfeit: (battleId: string) =>
+    api.post<{ message: string }>(`/api/battles/${battleId}/forfeit`),
 };
 
 export const aiApi = {
