@@ -152,9 +152,15 @@ export default function WaitingRoom() {
       }
     });
 
-    // Cleanup to prevent duplicate listeners (React 19 compatibility)
+    // Cleanup ALL listeners to prevent duplicates and ghost state
     return () => {
       socket.off("connect", joinRoom);
+      socket.off("connect_error");
+      socket.off("error");
+      socket.off("opponent_joined");
+      socket.off("opponent_ready");
+      socket.off("opponent_disconnected");
+      socket.off("battle:start");
       socket.off("guest_ready_to_battle");
     };
   }, [roomCode, mySocketId, currentPlayerUsername, isHost, battleId, navigate]);
@@ -224,6 +230,12 @@ export default function WaitingRoom() {
     // Host will navigate when receiving battle:start
   };
 
+  const handleLeave = (destination = "/") => {
+    // Notify server so opponent gets disconnected event
+    socketRef.current?.emit("waiting_room_leave", { roomCode });
+    navigate(destination);
+  };
+
   const allReady = players.length === 2 && players.every((p) => p.isReady);
 
   const normalizedPlayers = players.map((p) =>
@@ -252,7 +264,7 @@ export default function WaitingRoom() {
             </div>
           </div>
           <button
-            onClick={() => navigate("/battle-room")}
+            onClick={() => handleLeave("/battle-room")}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-muted text-xs font-semibold text-foreground transition-colors"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
@@ -385,7 +397,7 @@ export default function WaitingRoom() {
           </button>
 
           <button
-            onClick={() => navigate("/")}
+            onClick={() => handleLeave("/")}
             className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-border bg-card hover:bg-muted text-sm font-semibold text-foreground transition-colors"
           >
             <LogOut className="h-4 w-4" />

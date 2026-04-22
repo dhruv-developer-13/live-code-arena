@@ -64,6 +64,8 @@ export default function BattleArena() {
   const [opponentScore, setOpponentScore] = useState(0);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [questionBestScores, setQuestionBestScores] = useState<Record<string, number>>({});
+  const [forfeiting, setForfeiting] = useState(false);
+  const [confirmForfeit, setConfirmForfeit] = useState(false);
 
   const socketRef = useRef<Socket | null>(null);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
@@ -318,7 +320,6 @@ export default function BattleArena() {
 
     if (deductPoints) {
       socketRef.current?.emit("violation", { battleId, reason });
-      toast.error("Violation recorded", { description: reason });
     }
 
     setViolations((prev) => {
@@ -345,7 +346,7 @@ export default function BattleArena() {
       }
       return next;
     });
-  }, [battleId, handleSubmit, leaveBattle]);
+  }, [battleId, leaveBattle]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -448,35 +449,76 @@ export default function BattleArena() {
 
       {showLeaveDialog && (
         <div className="fixed inset-0 z-100 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowLeaveDialog(false)} />
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { if (!forfeiting) { setShowLeaveDialog(false); setConfirmForfeit(false); } }} />
           <div className="relative z-10 bg-card border border-border rounded-2xl shadow-2xl p-8 w-full max-w-md mx-4 flex flex-col items-center gap-5">
-            <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center">
-              <LogOut className="h-7 w-7 text-destructive" />
+            <div className={cn("w-14 h-14 rounded-full flex items-center justify-center", confirmForfeit ? "bg-destructive/20" : "bg-destructive/10")}>
+              <LogOut className={cn("h-7 w-7", confirmForfeit ? "text-destructive animate-pulse" : "text-destructive")} />
             </div>
             <div className="text-center">
-              <h2 className="text-xl font-bold mb-1">Leave the Arena?</h2>
-              <p className="text-sm text-muted-foreground">Submit your current code and see results, or forfeit and go home.</p>
+              {confirmForfeit ? (
+                <>
+                  <h2 className="text-xl font-bold mb-1 text-destructive">Confirm Forfeit?</h2>
+                  <p className="text-sm text-muted-foreground">This will end the battle and count as a loss. Your opponent wins automatically. This cannot be undone.</p>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-xl font-bold mb-1">Leave the Arena?</h2>
+                  <p className="text-sm text-muted-foreground">Submit your current code and see results, or forfeit and go home.</p>
+                </>
+              )}
             </div>
             <div className="flex flex-col gap-2 w-full">
-              <button
-                onClick={() => { setShowLeaveDialog(false); handleSubmitAndLeave(); }}
-                className="w-full px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition-colors flex items-center justify-center gap-2"
-              >
-                <Send className="h-4 w-4" /> Submit & Leave
-              </button>
-              <div className="flex gap-2">
-                <button onClick={() => setShowLeaveDialog(false)} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-secondary hover:bg-secondary/70 text-sm font-medium transition-colors">Stay</button>
-                <button onClick={async () => {
-                  try {
-                    console.log("[Forfeit] Starting forfeit for battle:", battleId);
-                    await battleApi.forfeit(battleId);
-                    console.log("[Forfeit] API call succeeded, waiting for battle:end event...");
-                  } catch (err) {
-                    console.error("[Forfeit] API error:", err);
-                    toast.error("Failed to forfeit battle");
-                  }
-                }} className="flex-1 px-4 py-2.5 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20 text-sm font-semibold transition-colors">Forfeit</button>
-              </div>
+              {!confirmForfeit ? (
+                <>
+                  <button
+                    onClick={() => { setShowLeaveDialog(false); handleSubmitAndLeave(); }}
+                    className="w-full px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Send className="h-4 w-4" /> Submit & Leave
+                  </button>
+                  <div className="flex gap-2">
+                    <button onClick={() => setShowLeaveDialog(false)} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-secondary hover:bg-secondary/70 text-sm font-medium transition-colors">Stay</button>
+                    <button onClick={() => setConfirmForfeit(true)} className="flex-1 px-4 py-2.5 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20 text-sm font-semibold transition-colors">Forfeit</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <button
+                    disabled={forfeiting}
+                    onClick={async () => {
+                      setForfeiting(true);
+                      try {
+                        console.log("[Forfeit] Starting forfeit for battle:", battleId);
+                        await battleApi.forfeit(battleId);
+                        console.log("[Forfeit] API call succeeded, waiting for battle:end event...");
+                        toast.success("Battle forfeited", { description: "Redirecting to results…" });
+                        // Give the server a moment to emit battle:end; if it doesn't arrive in 3s, navigate anyway
+                        setTimeout(() => {
+                          void leaveBattle(`/results/${battleId}`);
+                        }, 3000);
+                      } catch (err) {
+                        console.error("[Forfeit] API error:", err);
+                        toast.error("Failed to forfeit", { description: "Please try again or close the tab." });
+                        setForfeiting(false);
+                      }
+                    }}
+                    className="w-full px-4 py-2.5 rounded-lg bg-destructive hover:bg-destructive/90 text-destructive-foreground text-sm font-bold transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {forfeiting ? (
+                      <><span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> Forfeiting…</>
+                    ) : (
+                      <><LogOut className="h-4 w-4" /> Yes, Forfeit Battle</>
+                    )}
+                  </button>
+                  <button
+                    disabled={forfeiting}
+                    onClick={() => setConfirmForfeit(false)}
+                    className="w-full px-4 py-2.5 rounded-lg border border-border bg-secondary hover:bg-secondary/70 text-sm font-medium transition-colors disabled:opacity-50"
+                  >
+                    Go Back
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
