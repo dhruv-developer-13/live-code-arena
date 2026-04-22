@@ -127,12 +127,15 @@ export interface BattlePlayer {
   baseScore: number;
   aiBonus: number;
   total: number;
+  lastSubmissionTime?: string;
 }
 
 export interface BattleResults {
   battleId: string;
   status: string;
   message?: string;
+  forfeitType?: "VOLUNTARY" | "VIOLATION" | "TIMEOUT" | "DISCONNECT" | null;
+  forfeitedBy?: string | null;
   startedAt?: string;
   endedAt?: string;
   aiReview?: AIReviewResult;
@@ -196,8 +199,8 @@ export const battleApi = {
   getResults: (battleId: string) =>
     api.get<BattleResults>(`/api/battles/${battleId}/results`),
 
-  forfeit: (battleId: string) =>
-    api.post<{ message: string }>(`/api/battles/${battleId}/forfeit`),
+  forfeit: (battleId: string, reason?: "forfeit" | "violation") =>
+    api.post<{ message: string }>(`/api/battles/${battleId}/forfeit`, { reason: reason || "forfeit" }),
 };
 
 export const aiApi = {

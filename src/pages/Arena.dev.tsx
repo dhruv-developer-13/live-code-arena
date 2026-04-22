@@ -4,7 +4,7 @@ import {
   Clock, Play, Send,
   CheckCircle2, XCircle, Circle,
   LogOut, Trophy, Zap,
-  Maximize, ShieldAlert, ShieldX,
+  Maximize, ShieldAlert,
 } from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { python } from "@codemirror/lang-python";
@@ -34,14 +34,13 @@ const PYTHON_STUB = `# Read input and write your solution here
 
 `;
 const MAX_VIOLATIONS = 3;
-const SELECTION_BLOCK_MSG = "Selection of text is prohibited here";
 
 export default function BattleArena() {
   const { battleId = "" } = useParams<{ battleId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const userId = user?.id || "";
-
+  
   const [myPlayerRole, setMyPlayerRole] = useState<"p1" | "p2" | null>(null);
 
   const [problems, setProblems] = useState<Question[]>([]);
@@ -71,11 +70,8 @@ export default function BattleArena() {
   const [oppScorePulse, setOppScorePulse] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(() => !!document.fullscreenElement);
   const [violations, setViolations] = useState(0);
-  const [showViolationWarning, setShowViolationWarning] = useState(false);
-  const [violationReason, setViolationReason] = useState("");
   const ignoreDisconnectRef = useRef(true);
   const lastViolationAtRef = useRef(0);
-  const lastSelectionToastAtRef = useRef(0);
 
   const runMutation = useRunCode(battleId, problems[selectedProblem]?.id || "");
   const submitMutation = useSubmitCode(battleId, problems[selectedProblem]?.id || "");
@@ -197,7 +193,7 @@ export default function BattleArena() {
       toast.error(`Opponent (${data.player}) disconnected from battle!`);
     });
 
-    return () => {
+    return () => { 
       socket.off("connect", handleConnect);
     };
   }, [battleId, navigate, myPlayerRole, userId, enterFullscreen, leaveBattle, pulseMyScore]);
@@ -284,7 +280,7 @@ export default function BattleArena() {
           ...prev,
           [currentProblem.id]: Math.max(currentBest, result.points),
         }));
-
+        
         toast(`${result.passed}/${result.total} passed`, { description: `Best: ${Math.max(currentBest, result.points)} pts (no improvement)` });
       } else {
         toast.error("Wrong Answer");
@@ -297,24 +293,11 @@ export default function BattleArena() {
     }
   }, [currentProblem, battleId, code, submitMutation, timeLeft, questionBestScores]);
 
-  const handleQuestionSelectionAttempt = useCallback(() => {
-    const now = Date.now();
-    if (now - lastSelectionToastAtRef.current < 1200) return;
-    const selected = globalThis.getSelection()?.toString().trim() ?? "";
-    if (!selected) return;
-    globalThis.getSelection()?.removeAllRanges();
-    lastSelectionToastAtRef.current = now;
-    toast.error(SELECTION_BLOCK_MSG);
-  }, []);
-
   const registerViolation = useCallback((reason: string, deductPoints = true) => {
     const now = Date.now();
     // Avoid duplicate violations from blur + visibility firing together.
     if (now - lastViolationAtRef.current < 1200) return;
     lastViolationAtRef.current = now;
-
-    setViolationReason(reason);
-    setShowViolationWarning(true);
 
     if (deductPoints) {
       socketRef.current?.emit("violation", { battleId, reason });
@@ -325,19 +308,8 @@ export default function BattleArena() {
       const next = prev + 1;
       if (next >= MAX_VIOLATIONS) {
         toast.error("Disqualified", {
-          description: "Too many violations. Auto-forfeiting battle.",
+          description: "Too many violations. Battle will end shortly.",
         });
-        // Auto-forfeit: call the same API as manual forfeit
-        setTimeout(async () => {
-          try {
-            await battleApi.forfeit(battleId, "violation");
-          } catch (err) {
-            console.error("[Arena] Auto-forfeit failed:", err);
-          }
-          // Navigate to results (battle:end event from server will also trigger this,
-          // but we navigate proactively for immediate feedback)
-          void leaveBattle(`/results/${battleId}`);
-        }, 500);
       } else if (!deductPoints) {
         toast.warning(`Warning ${next}/${MAX_VIOLATIONS}`, { description: reason });
       } else {
@@ -351,32 +323,17 @@ export default function BattleArena() {
     const handleVisibilityChange = () => {
       if (document.hidden) {
         // Anti-cheat: detect tab switch or app minimization.
-        registerViolation("Tab switching or window minimizing detected.");
+        // registerViolation("Tab switching or window minimizing detected.");
       }
     };
 
-    const handleBlur = () => {
-      // Anti-cheat: detect focus leaving the battle window.
-      registerViolation("Window focus lost.");
-    };
-
-    const handleFullscreenChange = () => {
-      if (!document.fullscreenElement) {
-        // Anti-cheat: exiting fullscreen during battle is a violation.
-        registerViolation("Exited fullscreen mode.");
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("blur", handleBlur);
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    // Anti-cheat disabled in dev mode
+    // No event listeners for violations in dev mode
 
     return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("blur", handleBlur);
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      // No cleanup needed in dev mode
     };
-  }, [registerViolation]);
+  }, []);
 
   const acceptedIds = useMemo(
     () => new Set(submissions.filter((s) => s.status === "AC").map((s) => s.problem)),
@@ -393,13 +350,12 @@ export default function BattleArena() {
 
   const isUrgent = timeLeft < 5 * 60;
   const iLeading = myScore >= opponentScore;
-  const showFullscreenPrompt = !isFullscreen;
 
   return (
     <div className="min-h-screen bg-background flex flex-col select-none">
 
-      {showFullscreenPrompt && (
-        <div className="fixed inset-0 z-200 flex items-center justify-center bg-background/95 backdrop-blur-md">
+      {/* {showFullscreenPrompt && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-background/95 backdrop-blur-md">
           <div className="flex flex-col items-center gap-6 text-center max-w-sm mx-4">
             <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
               <Maximize className="h-8 w-8 text-emerald-500" />
@@ -421,10 +377,10 @@ export default function BattleArena() {
             </button>
           </div>
         </div>
-      )}
+      )} */}
 
-      {showViolationWarning && (
-        <div className="fixed inset-0 z-150 flex items-center justify-center">
+      {/* {showViolationWarning && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowViolationWarning(false)} />
           <div className="relative z-10 bg-card border border-border rounded-2xl shadow-2xl p-8 w-full max-w-sm mx-4 flex flex-col items-center gap-5">
             <div className={cn("w-14 h-14 rounded-full flex items-center justify-center", violations >= MAX_VIOLATIONS ? "bg-rose-500/20" : "bg-amber-500/15")}>
@@ -444,10 +400,10 @@ export default function BattleArena() {
             )}
           </div>
         </div>
-      )}
+      )} */}
 
       {showLeaveDialog && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowLeaveDialog(false)} />
           <div className="relative z-10 bg-card border border-border rounded-2xl shadow-2xl p-8 w-full max-w-md mx-4 flex flex-col items-center gap-5">
             <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center">
@@ -533,23 +489,23 @@ export default function BattleArena() {
         <ResizablePanel defaultSize="30" maxSize="30" minSize="0" collapsible collapsedSize="0">
           <div
             className="h-full border-r border-border bg-card flex flex-col overflow-hidden"
-            onCopy={(e) => {
-              // Anti-cheat: block copying from the problem statement.
-              e.preventDefault();
-              registerViolation("Copying from question panel is blocked.");
-            }}
-            onCut={(e) => {
-              // Anti-cheat: block cut operations from the problem panel.
-              e.preventDefault();
-              registerViolation("Cut is blocked.");
-            }}
-            onMouseUp={handleQuestionSelectionAttempt}
-            onKeyUp={handleQuestionSelectionAttempt}
-            onContextMenu={(e) => {
-              // Anti-cheat: disable right-click context actions in battle mode.
-              e.preventDefault();
-              registerViolation("Right-click menu is disabled during battle.");
-            }}
+            // onCopy={(e) => {
+            //   // Anti-cheat: block copying from the problem statement.
+            //   e.preventDefault();
+            //   registerViolation("Copying from question panel is blocked.");
+            // }}
+            // onCut={(e) => {
+            //   // Anti-cheat: block cut operations from the problem panel.
+            //   e.preventDefault();
+            //   registerViolation("Cut is blocked.");
+            // }}
+            // onMouseUp={handleQuestionSelectionAttempt}
+            // onKeyUp={handleQuestionSelectionAttempt}
+            // onContextMenu={(e) => {
+            //   // Anti-cheat: disable right-click context actions in battle mode.
+            //   e.preventDefault();
+            //   registerViolation("Right-click menu is disabled during battle.");
+            // }}
           >
             <div className="flex border-b border-border shrink-0">
               {difficultyOrder.map((diff, i) => (
@@ -651,57 +607,57 @@ export default function BattleArena() {
                       python(),
                       keymap.of([
                         indentWithTab,
-                        {
-                          key: "Mod-c",
-                          run: () => {
-                            // Anti-cheat: disable keyboard copy shortcut in editor.
-                            registerViolation("Copy shortcut is disabled.");
-                            return true;
-                          },
-                        },
-                        {
-                          key: "Mod-v",
-                          run: () => {
-                            // Anti-cheat: disable keyboard paste shortcut in editor.
-                            registerViolation("Paste shortcut is disabled.");
-                            return true;
-                          },
-                        },
-                        {
-                          key: "Mod-x",
-                          run: () => {
-                            // Anti-cheat: disable keyboard cut shortcut in editor.
-                            registerViolation("Cut shortcut is disabled.");
-                            return true;
-                          },
-                        },
+                        // {
+                        //   key: "Mod-c",
+                        //   run: () => {
+                        //     // Anti-cheat: disable keyboard copy shortcut in editor.
+                        //     registerViolation("Copy shortcut is disabled.");
+                        //     return true;
+                        //   },
+                        // },
+                        // {
+                        //   key: "Mod-v",
+                        //   run: () => {
+                        //     // Anti-cheat: disable keyboard paste shortcut in editor.
+                        //     registerViolation("Paste shortcut is disabled.");
+                        //     return true;
+                        //   },
+                        // },
+                        // {
+                        //   key: "Mod-x",
+                        //   run: () => {
+                        //     // Anti-cheat: disable keyboard cut shortcut in editor.
+                        //     registerViolation("Cut shortcut is disabled.");
+                        //     return true;
+                        //   },
+                        // },
                       ]),
-                      EditorView.domEventHandlers({
-                        copy: (event) => {
-                          // Anti-cheat: block copy action from editor context menu.
-                          event.preventDefault();
-                          registerViolation("Copy is disabled in the editor.");
-                          return true;
-                        },
-                        cut: (event) => {
-                          // Anti-cheat: block cut action from editor context menu.
-                          event.preventDefault();
-                          registerViolation("Cut is disabled in the editor.");
-                          return true;
-                        },
-                        paste: (event) => {
-                          // Anti-cheat: block paste into editor during battle.
-                          event.preventDefault();
-                          registerViolation("Paste is disabled in the editor.");
-                          return true;
-                        },
-                        contextmenu: (event) => {
-                          // Anti-cheat: disable right-click menu in the coding editor.
-                          event.preventDefault();
-                          registerViolation("Right-click is disabled in the editor.");
-                          return true;
-                        },
-                      }),
+                      // EditorView.domEventHandlers({
+                      //   copy: (event) => {
+                      //     // Anti-cheat: block copy action from editor context menu.
+                      //     event.preventDefault();
+                      //     registerViolation("Copy is disabled in the editor.");
+                      //     return true;
+                      //   },
+                      //   cut: (event) => {
+                      //     // Anti-cheat: block cut action from editor context menu.
+                      //     event.preventDefault();
+                      //     registerViolation("Cut is disabled in the editor.");
+                      //     return true;
+                      //   },
+                      //   paste: (event) => {
+                      //     // Anti-cheat: block paste into editor during battle.
+                      //     event.preventDefault();
+                      //     registerViolation("Paste is disabled in the editor.");
+                      //     return true;
+                      //   },
+                      //   contextmenu: (event) => {
+                      //     // Anti-cheat: disable right-click menu in the coding editor.
+                      //     event.preventDefault();
+                      //     registerViolation("Right-click is disabled in the editor.");
+                      //     return true;
+                      //   },
+                      // }),
                       EditorView.theme({
                         ".cm-content, .cm-line, .cm-scroller": {
                           userSelect: "text",
@@ -767,18 +723,18 @@ export default function BattleArena() {
               </div>
               <div className="space-y-3">
                 <div className={cn("relative overflow-hidden flex items-center justify-between p-3.5 rounded-xl border transition-all duration-500", iLeading ? "bg-emerald-500/10 border-emerald-500/30" : "bg-muted/50 border-border")}>
-                  {iLeading && <div className="absolute top-0 left-0 right-0 h-0.5 bg-linear-to-r from-transparent via-emerald-500 to-transparent" />}
+                  {iLeading && <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-emerald-500 to-transparent" />}
                   <div className="flex items-center gap-2">{iLeading && <Trophy className="h-3.5 w-3.5 text-emerald-500" />}<span className="font-semibold text-sm">You</span></div>
                   <span className={cn("font-black font-mono text-xl transition-all duration-300", iLeading ? "text-emerald-500" : "text-foreground", myScorePulse && "scale-125")}>{myScore}</span>
                 </div>
                 <div className={cn("relative overflow-hidden flex items-center justify-between p-3.5 rounded-xl border transition-all duration-500", !iLeading ? "bg-rose-500/10 border-rose-500/30" : "bg-muted/50 border-border")}>
-                  {!iLeading && <div className="absolute top-0 left-0 right-0 h-0.5 bg-linear-to-r from-transparent via-rose-500 to-transparent" />}
+                  {!iLeading && <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-rose-500 to-transparent" />}
                   <div className="flex items-center gap-2">{!iLeading && <Trophy className="h-3.5 w-3.5 text-rose-500" />}<span className="font-semibold text-sm">Opponent</span></div>
                   <span className={cn("font-black font-mono text-xl transition-all duration-300", !iLeading ? "text-rose-500" : "text-foreground", oppScorePulse && "scale-125")}>{opponentScore}</span>
                 </div>
                 <div className="h-2 rounded-full bg-muted overflow-hidden">
                   {myScore + opponentScore > 0 && (
-                    <div className="h-full rounded-full bg-linear-to-r from-emerald-500 to-emerald-400 transition-all duration-700" style={{ width: `${(myScore / (myScore + opponentScore)) * 100}%` }} />
+                    <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-700" style={{ width: `${(myScore / (myScore + opponentScore)) * 100}%` }} />
                   )}
                 </div>
               </div>

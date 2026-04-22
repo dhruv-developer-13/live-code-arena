@@ -7,8 +7,20 @@ import {
   Target, BarChart3,
   Sparkles, ChevronDown, ChevronUp,
   Clock, HardDrive, ThumbsUp, ArrowUpRight,
-  Quote,
+  Quote, ShieldX,
 } from "lucide-react";
+
+function formatRelativeTime(dateString: string | undefined): string {
+  if (!dateString) return "—";
+  const diff = Date.now() - new Date(dateString).getTime();
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  if (hours > 0) return `${hours}h ${minutes % 60}m ${seconds % 60}s ago`;
+  if (minutes > 0) return `${minutes}m ${seconds % 60}s ago`;
+  return `${seconds}s ago`;
+}
+
 import { Header } from "@/components/Header";
 import { PageBackground } from "@/components/PageBackground";
 import { cn } from "@/lib/utils";
@@ -284,6 +296,8 @@ export default function Results() {
   }
 
   const { players, questions, submissions, winner } = battle;
+  const forfeitType = battle.forfeitType as string | null | undefined;
+  const forfeitedBy = battle.forfeitedBy as string | null | undefined;
 
   if (!players || !questions) {
     return (
@@ -329,6 +343,9 @@ export default function Results() {
   const isWinner = isInBattle && user?.id && winner?.id && user.id === winner.id;
   // Tie: no winner AND totals are equal (consistent with backend now using total scores)
   const isTie = !winner?.id && myTotal === opponentTotal && status === "COMPLETED";
+  const isForfeit = !!forfeitType;
+  const isViolation = forfeitType === "VIOLATION";
+  const iForfeited = forfeitedBy === user?.id;
   const maxPossible = 600;
 
   const questionList = Object.values(questions);
@@ -406,6 +423,9 @@ export default function Results() {
                     isWinner ? "text-emerald-400" : isTie ? "text-foreground" : "text-rose-400"
                   )}>{myTotal}</p>
                   <p className="text-xs text-muted-foreground mt-1">/ {maxPossible}</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">
+                    {formatRelativeTime(myPlayer?.lastSubmissionTime)}
+                  </p>
                 </div>
                 <span className="hidden sm:block text-2xl font-black text-muted-foreground/40">—</span>
                 <span className="sm:hidden text-lg font-black text-muted-foreground/40">vs</span>
@@ -416,6 +436,9 @@ export default function Results() {
                     "text-foreground"
                   )}>{opponentTotal}</p>
                   <p className="text-xs text-muted-foreground mt-1">/ {maxPossible}</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">
+                    {formatRelativeTime(opponentPlayer?.lastSubmissionTime)}
+                  </p>
                 </div>
               </div>
             </div>
@@ -462,6 +485,38 @@ export default function Results() {
             </CardContainer>
           </div>
         </div>
+
+        {isForfeit && (
+          <div className={cn(
+            "rounded-2xl border p-5 flex items-center gap-4",
+            isViolation
+              ? "bg-rose-500/5 border-rose-500/20"
+              : "bg-amber-500/5 border-amber-500/20"
+          )}>
+            <div className={cn(
+              "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+              isViolation
+                ? "bg-rose-500/15 border border-rose-500/30"
+                : "bg-amber-500/15 border border-amber-500/30"
+            )}>
+              <ShieldX className={cn("h-5 w-5", isViolation ? "text-rose-400" : "text-amber-400")} />
+            </div>
+            <div>
+              <p className={cn("text-sm font-bold", isViolation ? "text-rose-400" : "text-amber-400")}>
+                {isViolation ? "Ended by Disqualification" : "Ended by Forfeit"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {iForfeited
+                  ? isViolation
+                    ? "You were disqualified due to too many anti-cheat violations."
+                    : "You forfeited this battle."
+                  : isViolation
+                    ? "Your opponent was disqualified due to anti-cheat violations."
+                    : "Your opponent forfeited the battle."}
+              </p>
+            </div>
+          </div>
+        )}
 
         <div>
           <div className="flex items-center gap-2 mb-4">
