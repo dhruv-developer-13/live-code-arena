@@ -544,12 +544,12 @@ export default function Results() {
                   baseScore={myPlayer?.baseScore || 0}
                   aiBonus={myPlayer?.aiBonus || 0}
                 />
-                {isInBattle && battle.aiReview && (
+                {isInBattle && battle.aiReview && battle.aiReview.player1 && (
                   <CardContainer className="p-4">
                     <PlayerFeedback
                       title="Your Feedback"
-                      strengths={(isPlayer1 ? battle.aiReview.player1.strengths : battle.aiReview.player2.strengths) ?? []}
-                      improvements={(isPlayer1 ? battle.aiReview.player1.improvements : battle.aiReview.player2.improvements) ?? []}
+                      strengths={(isPlayer1 ? battle.aiReview.player1?.strengths : battle.aiReview.player2?.strengths) ?? []}
+                      improvements={(isPlayer1 ? battle.aiReview.player1?.improvements : battle.aiReview.player2?.improvements) ?? []}
                     />
                   </CardContainer>
                 )}
