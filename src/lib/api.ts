@@ -205,7 +205,7 @@ export const battleApi = {
 
 export const aiApi = {
   review: (code: string, language: string) =>
-    api.post<AIReviewResponse>("/ai/review", { code, language }),
+    api.post<AIReviewResponse>("/ai/review", { prompt: `Review this ${language} code:\n\n${code}` }),
 };
 
 export interface UserStats {

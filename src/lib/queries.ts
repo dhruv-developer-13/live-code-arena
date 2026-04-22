@@ -34,6 +34,14 @@ export function useBattleResults(battleId: string, enabled = true) {
     queryFn: () => battleApi.getResults(battleId),
     enabled: enabled && !!battleId,
     retry: false,
+    refetchInterval: (query) => {
+      const data = query.state.data?.data?.data;
+      const status = data?.status;
+      if (status === "ONGOING") return 2000;
+      if (!data?.aiReview) return 2000;
+      return false;
+    },
+    refetchIntervalInBackground: false,
   });
 }
 
