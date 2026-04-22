@@ -128,10 +128,11 @@ export default function BattleArena() {
       socket.emit("battle:join", { battleId });
     }
 
-    socket.on("connect", () => {
+    const handleConnect = () => {
       console.log("[Arena] Socket connected, joining battle");
       socket.emit("battle:join", { battleId });
-    });
+    };
+    socket.on("connect", handleConnect);
 
     socket.on("player:role", (data: { role: "p1" | "p2"; userId: string }) => {
       console.log("[Arena] Received player:role", data);
@@ -193,8 +194,7 @@ export default function BattleArena() {
     });
 
     return () => { 
-      // Don't disconnect - socket persists across pages
-      // socket.disconnect(); 
+      socket.off("connect", handleConnect);
     };
   }, [battleId, navigate, myPlayerRole, userId, enterFullscreen, leaveBattle, pulseMyScore]);
 

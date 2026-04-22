@@ -92,10 +92,15 @@ export default function WaitingRoom() {
 
     socket.on("error", (err: { code: number; message: string }) => {
       console.error("Socket error:", err);
+      if (err.message === "Battle not ready") {
+        console.log("[Waitingroom] Battle not ready, will retry via polling");
+        return;
+      }
       toast.error(err.message);
     });
 
     socket.on("opponent_joined", ({ player }: { player: { userId: string; username: string } }) => {
+      if (isStarting) return;
       const opponentId = mySocketId === "1" ? "2" : "1";
       setPlayers((prev) => {
         if (prev.find((p) => p.id === opponentId)) return prev;
@@ -147,28 +152,37 @@ export default function WaitingRoom() {
       }
     });
 
-    // Don't disconnect - socket will persist to arena
-    // return () => { socket.disconnect(); };
+    // Cleanup to prevent duplicate listeners (React 19 compatibility)
+    return () => {
+      socket.off("connect", joinRoom);
+      socket.off("guest_ready_to_battle");
+    };
   }, [roomCode, mySocketId, currentPlayerUsername, isHost, battleId, navigate]);
 
   // Polling as fallback for battle start
   useEffect(() => {
     if (!battleId || isStarting) return;
     
-    const poll = setInterval(async () => {
+    let pollInterval: ReturnType<typeof setInterval>;
+    
+    const poll = async () => {
       try {
         const res = await api.get(`/api/battles/${battleId}`);
         console.log("Polling status:", res.data);
-        if (res.data.status === "ONGOING") {
+        if (res.data.status === "ONGOING" && !isStarting) {
           setIsStarting(true);
+          clearInterval(pollInterval);
           navigate(`/arena/${battleId}?userId=${mySocketId}&username=${currentPlayerUsername}`);
         }
       } catch {
         // Ignore errors, keep polling
       }
-    }, 2000);
+    };
 
-    return () => clearInterval(poll);
+    pollInterval = setInterval(poll, 2000);
+    poll();
+
+    return () => clearInterval(pollInterval);
   }, [battleId, isStarting, mySocketId, currentPlayerUsername, navigate]);
 
   const toggleReady = () => {
